@@ -46,14 +46,24 @@ export default function Globe({
 }: Props) {
   const viewerRef = useRef<CesiumComponentRef<CesiumViewer>>(null)
 
-  // Apply OSM imagery on mount
+  // Poll until the Cesium viewer element is available, then apply OSM imagery.
+  // A plain useEffect fires before Resium finishes initialising the viewer,
+  // causing an intermittent blank globe. The rAF retry loop is the safe fix.
   useEffect(() => {
-    const viewer = viewerRef.current?.cesiumElement
-    if (!viewer) return
-    viewer.imageryLayers.removeAll()
-    viewer.imageryLayers.addImageryProvider(
-      new OpenStreetMapImageryProvider({ url: 'https://tile.openstreetmap.org/' })
-    )
+    let rafId: number
+    const apply = () => {
+      const viewer = viewerRef.current?.cesiumElement
+      if (!viewer) {
+        rafId = requestAnimationFrame(apply)
+        return
+      }
+      viewer.imageryLayers.removeAll()
+      viewer.imageryLayers.addImageryProvider(
+        new OpenStreetMapImageryProvider({ url: 'https://tile.openstreetmap.org/' })
+      )
+    }
+    rafId = requestAnimationFrame(apply)
+    return () => cancelAnimationFrame(rafId)
   }, [])
 
   // Fly to telescope — low-angle horizon view like a real observer
@@ -64,11 +74,11 @@ export default function Globe({
       destination: Cartesian3.fromDegrees(
         flyToTelescope.lon,
         flyToTelescope.lat,
-        800_000        // 800 km altitude — close enough to see nearby sats
+        800_000
       ),
       orientation: {
         heading: 0,
-        pitch: -CesiumMath.toRadians(45),   // 45° angle — horizon view
+        pitch: -CesiumMath.toRadians(45),
         roll: 0,
       },
       duration: 2.0,
