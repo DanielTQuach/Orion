@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Globe from '@/components/Globe'
 import TelescopeSearch from '@/components/TelescopeSearch'
 import FilterPanel from '@/components/FilterPanel'
@@ -12,6 +12,8 @@ import { useReflections } from '@/hooks/useReflections'
 import type { SatelliteFilters } from '@/hooks/useSatellites'
 import type { Telescope } from '@/hooks/useTelescopes'
 import './App.css'
+
+interface SunDirection { x: number; y: number; z: number }
 
 const styles: Record<string, React.CSSProperties> = {
   addBtn: {
@@ -36,6 +38,7 @@ export default function App() {
   const [flyToTelescope, setFlyToTelescope] = useState<Telescope | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
   const [predicting, setPredicting] = useState(false)
+  const [sunDirection, setSunDirection] = useState<SunDirection | null>(null)
 
   // Data hooks
   const { satellites } = useSatellites(filters)
@@ -47,6 +50,18 @@ export default function App() {
 
   // Reflection events for selected telescope
   const { events, reflectingIds, refetch: refetchReflections } = useReflections(selectedTelescopeId)
+
+  // Fetch sun direction once on mount and refresh every 5 minutes
+  useEffect(() => {
+    const load = () =>
+      fetch('/api/sun')
+        .then(r => r.ok ? r.json() : null)
+        .then(d => d && setSunDirection({ x: d.x, y: d.y, z: d.z }))
+        .catch(() => {})
+    load()
+    const t = setInterval(load, 5 * 60 * 1000)
+    return () => clearInterval(t)
+  }, [])
 
   // Trigger a scan when a telescope is selected
   const runScan = async (telescopeId: string) => {
@@ -89,6 +104,7 @@ export default function App() {
         onSelectTelescope={setSelectedTelescopeId}
         flyToTelescope={flyToTelescope}
         reflectingIds={reflectingIds}
+        sunDirection={sunDirection}
       />
       <TelescopeSearch
         onSelect={handleTelescopeSelect}

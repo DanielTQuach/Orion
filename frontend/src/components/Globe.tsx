@@ -12,10 +12,14 @@ import SatelliteLayer from './SatelliteLayer'
 import TelescopeLayer from './TelescopeLayer'
 import GroundTrack from './GroundTrack'
 import ReflectionOverlay from './ReflectionOverlay'
+import HistoricalTrail from './HistoricalTrail'
+import ReflectionRay from './ReflectionRay'
 import type { SatPosition } from '@/hooks/useSatPositions'
 import type { Telescope } from '@/hooks/useTelescopes'
 
 Ion.defaultAccessToken = ''
+
+interface SunDirection { x: number; y: number; z: number }
 
 interface Props {
   satPositions: Map<number, SatPosition>
@@ -26,6 +30,7 @@ interface Props {
   onSelectTelescope?: (id: string) => void
   flyToTelescope?: Telescope | null
   reflectingIds?: Set<number>
+  sunDirection?: SunDirection | null
 }
 
 export default function Globe({
@@ -37,6 +42,7 @@ export default function Globe({
   onSelectTelescope,
   flyToTelescope,
   reflectingIds = new Set(),
+  sunDirection = null,
 }: Props) {
   const viewerRef = useRef<CesiumComponentRef<CesiumViewer>>(null)
 
@@ -91,7 +97,14 @@ export default function Globe({
         onSelect={onSelectTelescope}
       />
       <GroundTrack noradId={selectedSatId ?? null} />
+      <HistoricalTrail noradId={selectedSatId ?? null} />
       <ReflectionOverlay positions={satPositions} reflectingIds={reflectingIds} />
+      <ReflectionRay
+        satPositions={satPositions}
+        reflectingIds={reflectingIds}
+        telescope={telescopes.find(t => t.telescope_id === selectedTelescopeId) ?? null}
+        sunDirection={sunDirection}
+      />
     </Viewer>
   )
 }
