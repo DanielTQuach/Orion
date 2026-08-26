@@ -35,6 +35,44 @@ async def tle_cache_status():
     return {"cached_tle_count": tle_cache.size()}
 
 
+@router.get("/sun")
+async def get_sun_direction():
+    """
+    Return the current Sun position as a unit vector in ECEF.
+    Used by the frontend to render the Sun→Satellite reflection ray.
+    """
+    from services.geometry import sun_position_ecef
+    import math
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    x, y, z = sun_position_ecef(now)
+    mag = math.sqrt(x**2 + y**2 + z**2)
+    return {
+        "timestamp": now.isoformat(),
+        "x": round(x / mag, 8),
+        "y": round(y / mag, 8),
+        "z": round(z / mag, 8),
+        "distance_km": round(mag, 0),
+    }
+
+
+@router.get("/history/{norad_id}")
+async def get_history_track(
+    norad_id: int,
+    steps: int = Query(20, ge=5, le=120, description="Number of historical positions"),
+    step_seconds: int = Query(30, ge=10, le=120, description="Seconds between positions"),
+):
+    """
+    Return the recent 3D trail of a satellite — back-propagated positions
+    at orbital altitude (not projected to ground). Ordered oldest → newest.
+    Default: 20 points × 30s = 10 minutes of history.
+    """
+    trail = history_track(norad_id, steps=steps, step_seconds=step_seconds)
+    if trail is None:
+        raise HTTPException(status_code=404, detail=f"No cached TLE for NORAD {norad_id}.")
+    return {"norad_id": norad_id, "steps": len(trail), "trail": trail}
+
+
 @router.get("/groundtrack/{norad_id}")
 async def get_ground_track(
     norad_id: int,

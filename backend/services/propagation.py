@@ -150,3 +150,42 @@ def ground_track(
         })
 
     return track
+
+
+def history_track(
+    norad_id: int,
+    steps: int = 20,
+    step_seconds: int = 30,
+) -> list[dict] | None:
+    """
+    Back-propagate a satellite over the past (steps × step_seconds) seconds.
+    Returns a list of {x_km, y_km, z_km, alt_km, timestamp} ordered oldest→newest,
+    suitable for rendering a 3D trail at orbital altitude.
+    """
+    tle = get_tle(norad_id)
+    if not tle or not tle.get("tle_line1") or not tle.get("tle_line2"):
+        return None
+
+    sat    = Satrec.twoline2rv(tle["tle_line1"], tle["tle_line2"])
+    now    = datetime.now(timezone.utc)
+    trail  = []
+
+    # Step backwards from (steps-1) × step_seconds ago up to now
+    for i in range(steps - 1, -1, -1):
+        dt      = now - timedelta(seconds=i * step_seconds)
+        jd, fr  = _datetime_to_jd(dt)
+        e, r, v = sat.sgp4(jd, fr)
+        if e != 0:
+            continue
+        theta        = _gmst(jd, fr)
+        x, y, z      = _teme_to_ecef(r[0], r[1], r[2], theta)
+        _, _, alt    = _ecef_to_geodetic(x, y, z)
+        trail.append({
+            "x_km":      round(x, 2),
+            "y_km":      round(y, 2),
+            "z_km":      round(z, 2),
+            "alt_km":    round(alt, 2),
+            "timestamp": dt.isoformat(),
+        })
+
+    return trail
