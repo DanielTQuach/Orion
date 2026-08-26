@@ -35,6 +35,25 @@ async def tle_cache_status():
     return {"cached_tle_count": tle_cache.size()}
 
 
+@router.get("/groundtrack/{norad_id}")
+async def get_ground_track(
+    norad_id: int,
+    steps: int = Query(90, ge=10, le=360, description="Number of track points"),
+    step_seconds: int = Query(60, ge=10, le=600, description="Seconds between points"),
+):
+    """
+    Return a ground track: list of lat/lon/alt_km positions propagated forward
+    from now at the given step interval. Default: 90 points × 60s = 90 min (one orbit).
+    """
+    track = ground_track(norad_id, steps=steps, step_seconds=step_seconds)
+    if track is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No cached TLE for NORAD {norad_id}.",
+        )
+    return {"norad_id": norad_id, "steps": len(track), "track": track}
+
+
 @router.post("/tle/refresh")
 async def force_tle_refresh(group: str | None = Query(None, description="Specific group name to refresh, or omit for all")):
     """

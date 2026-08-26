@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import Globe from '@/components/Globe'
 import TelescopeSearch from '@/components/TelescopeSearch'
 import FilterPanel from '@/components/FilterPanel'
+import InfoPanel from '@/components/InfoPanel'
 import { useSatellites } from '@/hooks/useSatellites'
 import { useTelescopes } from '@/hooks/useTelescopes'
 import { useSatPositions } from '@/hooks/useSatPositions'
@@ -28,6 +29,11 @@ export default function App() {
     setFlyToTelescope(telescope)
   }
 
+  const selectedSatPosition = selectedSatId ? satPositions.get(selectedSatId) : null
+  const selectedTelescope   = selectedTelescopeId
+    ? telescopes.find(t => t.telescope_id === selectedTelescopeId) ?? null
+    : null
+
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#000', position: 'relative' }}>
       <Globe
@@ -44,6 +50,11 @@ export default function App() {
         selectedId={selectedTelescopeId}
       />
       <FilterPanel filters={filters} onChange={setFilters} />
+      <InfoPanel
+        satellite={selectedSatPosition}
+        telescope={selectedTelescope}
+        onClose={() => { setSelectedSatId(null); setSelectedTelescopeId(null) }}
+      />
     </div>
   )
 }

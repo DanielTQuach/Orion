@@ -10,6 +10,7 @@ import type { CesiumComponentRef } from 'resium'
 import type { Viewer as CesiumViewer } from 'cesium'
 import SatelliteLayer from './SatelliteLayer'
 import TelescopeLayer from './TelescopeLayer'
+import GroundTrack from './GroundTrack'
 import type { SatPosition } from '@/hooks/useSatPositions'
 import type { Telescope } from '@/hooks/useTelescopes'
 
@@ -86,6 +87,7 @@ export default function Globe({
         selectedId={selectedTelescopeId}
         onSelect={onSelectTelescope}
       />
+      <GroundTrack noradId={selectedSatId ?? null} />
     </Viewer>
   )
 }
