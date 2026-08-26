@@ -1,6 +1,7 @@
 /**
  * Polls /api/propagate for a list of NORAD IDs and returns
  * their current lat/lon/alt positions. Refreshes every `intervalMs`.
+ * Does nothing if the TLE cache is empty.
  */
 import { useEffect, useState, useRef } from 'react'
 
@@ -22,6 +23,11 @@ export function useSatPositions(noradIds: number[], intervalMs = DEFAULT_INTERVA
 
   const fetchAll = async () => {
     if (noradIds.length === 0) return
+
+    // Check cache before hammering propagate with guaranteed 404s
+    const status = await fetch('/api/tle/status').then(r => r.ok ? r.json() : null).catch(() => null)
+    if (!status || status.cached_tle_count === 0) return
+
     setLoading(true)
     try {
       const results = await Promise.allSettled(

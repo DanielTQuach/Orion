@@ -35,6 +35,23 @@ async def tle_cache_status():
     return {"cached_tle_count": tle_cache.size()}
 
 
+@router.post("/tle/seed")
+async def seed_static_tles():
+    """
+    Load static fallback TLEs into the in-memory cache.
+    Use this when CelesTrak is unreachable — provides demo data for all
+    5 seeded satellites (ISS, HST, JWST, Starlink-2688, OneWeb-0008).
+    """
+    from seed_tles import STATIC_TLES
+    for sat in STATIC_TLES:
+        tle_cache.set(f"tle:{sat['norad_id']}", {
+            "name":      sat["name"],
+            "tle_line1": sat["tle_line1"],
+            "tle_line2": sat["tle_line2"],
+        })
+    return {"seeded": len(STATIC_TLES), "cached_tle_count": tle_cache.size()}
+
+
 @router.get("/sun")
 async def get_sun_direction():
     """

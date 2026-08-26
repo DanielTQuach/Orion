@@ -5,6 +5,7 @@ import FilterPanel from '@/components/FilterPanel'
 import InfoPanel from '@/components/InfoPanel'
 import TimelineScrubber from '@/components/TimelineScrubber'
 import AddTelescopeForm from '@/components/AddTelescopeForm'
+import TleStatusBanner from '@/components/TleStatusBanner'
 import { useSatellites } from '@/hooks/useSatellites'
 import { useTelescopes } from '@/hooks/useTelescopes'
 import { useSatPositions } from '@/hooks/useSatPositions'
@@ -95,6 +96,7 @@ export default function App() {
 
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#000', position: 'relative' }}>
+      <TleStatusBanner />
       <Globe
         satPositions={satPositions}
         telescopes={telescopes}
