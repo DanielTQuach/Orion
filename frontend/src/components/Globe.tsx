@@ -11,6 +11,7 @@ import type { Viewer as CesiumViewer } from 'cesium'
 import SatelliteLayer from './SatelliteLayer'
 import TelescopeLayer from './TelescopeLayer'
 import GroundTrack from './GroundTrack'
+import ReflectionOverlay from './ReflectionOverlay'
 import type { SatPosition } from '@/hooks/useSatPositions'
 import type { Telescope } from '@/hooks/useTelescopes'
 
@@ -24,6 +25,7 @@ interface Props {
   onSelectSat?: (id: number) => void
   onSelectTelescope?: (id: string) => void
   flyToTelescope?: Telescope | null
+  reflectingIds?: Set<number>
 }
 
 export default function Globe({
@@ -34,6 +36,7 @@ export default function Globe({
   onSelectSat,
   onSelectTelescope,
   flyToTelescope,
+  reflectingIds = new Set(),
 }: Props) {
   const viewerRef = useRef<CesiumComponentRef<CesiumViewer>>(null)
 
@@ -88,6 +91,7 @@ export default function Globe({
         onSelect={onSelectTelescope}
       />
       <GroundTrack noradId={selectedSatId ?? null} />
+      <ReflectionOverlay positions={satPositions} reflectingIds={reflectingIds} />
     </Viewer>
   )
 }
