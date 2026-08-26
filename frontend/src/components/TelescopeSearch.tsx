@@ -1,15 +1,12 @@
 import { useState } from 'react'
+import type { Telescope } from '@/hooks/useTelescopes'
 
-interface Telescope {
-  telescope_id: string
-  name: string
-  lat: number
-  lon: number
-  alt_m: number
-  operator: string | null
+interface Props {
+  onSelect?: (telescope: Telescope) => void
+  selectedId?: string | null
 }
 
-export default function TelescopeSearch() {
+export default function TelescopeSearch({ onSelect, selectedId }: Props) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Telescope[]>([])
   const [loading, setLoading] = useState(false)
@@ -47,16 +44,23 @@ export default function TelescopeSearch() {
       </div>
       {error && <p style={styles.error}>{error}</p>}
       <ul style={styles.list}>
-        {results.map(t => (
-          <li key={t.telescope_id} style={styles.item}>
-            <strong>{t.telescope_id}</strong> — {t.name}
-            <br />
-            <small>
-              {t.lat.toFixed(4)}°, {t.lon.toFixed(4)}° | {t.alt_m}m
-              {t.operator ? ` | ${t.operator}` : ''}
-            </small>
-          </li>
-        ))}
+        {results.map(t => {
+          const isSelected = t.telescope_id === selectedId
+          return (
+            <li
+              key={t.telescope_id}
+              style={{ ...styles.item, ...(isSelected ? styles.itemSelected : {}) }}
+              onClick={() => onSelect?.(t)}
+            >
+              <strong>{t.telescope_id}</strong> — {t.name}
+              <br />
+              <small>
+                {t.lat.toFixed(4)}°, {t.lon.toFixed(4)}° | {t.alt_m}m
+                {t.operator ? ` | ${t.operator}` : ''}
+              </small>
+            </li>
+          )
+        })}
         {results.length === 0 && !loading && query && (
           <li style={styles.muted}>No telescopes found.</li>
         )}
@@ -100,7 +104,18 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 13,
   },
   list: { listStyle: 'none', padding: 0, margin: '12px 0 0', maxHeight: 260, overflowY: 'auto' },
-  item: { padding: '8px 0', borderBottom: '1px solid #1a2a3a', fontSize: 13, lineHeight: 1.5 },
+  item: {
+    padding: '8px 0',
+    borderBottom: '1px solid #1a2a3a',
+    fontSize: 13,
+    lineHeight: 1.5,
+    cursor: 'pointer',
+  },
+  itemSelected: {
+    color: '#f59e0b',
+    borderLeft: '3px solid #f59e0b',
+    paddingLeft: 8,
+  },
   muted: { color: '#57606a', fontSize: 13, padding: '8px 0' },
   error: { color: '#f87171', fontSize: 12, margin: '8px 0 0' },
 }
