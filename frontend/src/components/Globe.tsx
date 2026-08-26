@@ -56,7 +56,7 @@ export default function Globe({
     )
   }, [])
 
-  // Fly to telescope when selected from search panel
+  // Fly to telescope — low-angle horizon view like a real observer
   useEffect(() => {
     const viewer = viewerRef.current?.cesiumElement
     if (!viewer || !flyToTelescope) return
@@ -64,13 +64,14 @@ export default function Globe({
       destination: Cartesian3.fromDegrees(
         flyToTelescope.lon,
         flyToTelescope.lat,
-        2_000_000
+        800_000        // 800 km altitude — close enough to see nearby sats
       ),
       orientation: {
         heading: 0,
-        pitch: -CesiumMath.toRadians(90),
+        pitch: -CesiumMath.toRadians(45),   // 45° angle — horizon view
         roll: 0,
       },
+      duration: 2.0,
     })
   }, [flyToTelescope])
 

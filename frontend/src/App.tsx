@@ -6,6 +6,7 @@ import InfoPanel from '@/components/InfoPanel'
 import TimelineScrubber from '@/components/TimelineScrubber'
 import AddTelescopeForm from '@/components/AddTelescopeForm'
 import TleStatusBanner from '@/components/TleStatusBanner'
+import NearbyPanel from '@/components/NearbyPanel'
 import { useSatellites } from '@/hooks/useSatellites'
 import { useTelescopes } from '@/hooks/useTelescopes'
 import { useSatPositions } from '@/hooks/useSatPositions'
@@ -112,8 +113,17 @@ export default function App() {
         onSelect={handleTelescopeSelect}
         selectedId={selectedTelescopeId}
       />
+
+      {/* Nearby satellites panel — shown when a telescope is selected */}
+      <NearbyPanel
+        telescopeId={selectedTelescopeId}
+        selectedSatId={selectedSatId}
+        onSelectSat={setSelectedSatId}
+      />
+
       <FilterPanel filters={filters} onChange={setFilters} />
-      {/* Info panel shown only when no telescope is selected (satellite selected) */}
+
+      {/* Info panel — satellite selected, no telescope */}
       {selectedSatId && !selectedTelescopeId && (
         <InfoPanel
           satellite={selectedSatPosition}
@@ -122,8 +132,8 @@ export default function App() {
         />
       )}
 
-      {/* Timeline shown when a telescope is selected */}
-      {selectedTelescopeId && !selectedSatId && (
+      {/* Timeline — telescope selected */}
+      {selectedTelescopeId && (
         <TimelineScrubber
           events={events}
           telescopeId={selectedTelescopeId}

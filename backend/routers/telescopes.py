@@ -3,7 +3,12 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from database import get_db
-from models import Telescope
+from models import Telescope, Satellite
+from services.geometry import geodetic_to_ecef
+from services.celestrak import get_tle
+from services.propagation import propagate
+from services.cache import tle_cache
+import math
 
 router = APIRouter(tags=["telescopes"])
 
@@ -77,3 +82,49 @@ async def get_telescope(telescope_id: str, db: AsyncSession = Depends(get_db)):
         "alt_m": tel.alt_m,
         "operator": tel.operator,
     }
+
+
+@router.get("/telescopes/{telescope_id}/nearby")
+async def get_nearby_satellites(
+    telescope_id: str,
+    limit: int = Query(10, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Return the closest satellites to a telescope, sorted by 3D distance (km).
+    Only satellites with a cached TLE are included.
+    """
+    tel = await db.get(Telescope, telescope_id.upper())
+    if not tel:
+        raise HTTPException(status_code=404, detail="Telescope not found")
+
+    tel_ecef = geodetic_to_ecef(tel.lat, tel.lon, tel.alt_m)
+
+    # Get all satellites that have a cached TLE
+    result = await db.execute(select(Satellite))
+    satellites = result.scalars().all()
+
+    nearby = []
+    for sat in satellites:
+        if not tle_cache.get(f"tle:{sat.norad_id}"):
+            continue
+        pos = propagate(sat.norad_id)
+        if not pos:
+            continue
+        dx = pos["x_km"] - tel_ecef[0]
+        dy = pos["y_km"] - tel_ecef[1]
+        dz = pos["z_km"] - tel_ecef[2]
+        dist_km = math.sqrt(dx**2 + dy**2 + dz**2)
+        nearby.append({
+            "norad_id":    sat.norad_id,
+            "name":        sat.name,
+            "category":    sat.category,
+            "operator":    sat.operator,
+            "lat":         pos["lat"],
+            "lon":         pos["lon"],
+            "alt_km":      pos["alt_km"],
+            "distance_km": round(dist_km, 1),
+        })
+
+    nearby.sort(key=lambda x: x["distance_km"])
+    return {"telescope_id": telescope_id.upper(), "satellites": nearby[:limit]}
