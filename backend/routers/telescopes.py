@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from database import get_db
@@ -31,6 +32,33 @@ async def list_telescopes(
         }
         for t in rows
     ]
+
+
+class TelescopeCreate(BaseModel):
+    telescope_id: str
+    name: str
+    lat: float
+    lon: float
+    alt_m: float
+    operator: str | None = None
+
+
+@router.post("/telescopes", status_code=201)
+async def create_telescope(body: TelescopeCreate, db: AsyncSession = Depends(get_db)):
+    existing = await db.get(Telescope, body.telescope_id.upper())
+    if existing:
+        raise HTTPException(status_code=409, detail="Telescope ID already exists")
+    tel = Telescope(
+        telescope_id = body.telescope_id.upper(),
+        name         = body.name,
+        lat          = body.lat,
+        lon          = body.lon,
+        alt_m        = body.alt_m,
+        operator     = body.operator,
+    )
+    db.add(tel)
+    await db.commit()
+    return {"telescope_id": tel.telescope_id, "name": tel.name}
 
 
 @router.get("/telescopes/{telescope_id}")
