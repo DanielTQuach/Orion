@@ -1,8 +1,8 @@
 /**
- * NearbyPanel — shows the closest satellites to the selected telescope,
- * sorted by 3D distance. Clicking a row selects that satellite.
+ * Nearby satellites for the selected telescope, sorted by 3D distance.
  */
 import { useEffect, useState } from 'react'
+import { cn } from '@/lib/utils'
 
 interface NearbySat {
   norad_id: number
@@ -26,97 +26,61 @@ export default function NearbyPanel({ telescopeId, selectedSatId, onSelectSat }:
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (!telescopeId) { setSatellites([]); return }
+    if (!telescopeId) {
+      setSatellites([])
+      return
+    }
     setLoading(true)
-    fetch(`/api/telescopes/${encodeURIComponent(telescopeId)}/nearby?limit=10`)
-      .then(r => r.ok ? r.json() : null)
+    fetch(`/api/telescopes/${encodeURIComponent(telescopeId)}/nearby?limit=8`)
+      .then(r => (r.ok ? r.json() : null))
       .then(d => d && setSatellites(d.satellites))
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [telescopeId])
 
-  if (!telescopeId) return null
+  if (!telescopeId) {
+    return <p className="font-mono text-[11px] text-muted-foreground">Select a telescope to see nearby satellites.</p>
+  }
+
+  if (loading) {
+    return <p className="font-mono text-[11px] text-muted-foreground">Finding nearby satellites…</p>
+  }
+
+  if (satellites.length === 0) {
+    return (
+      <p className="font-mono text-[11px] text-muted-foreground">
+        No satellites with cached TLEs near this site.
+      </p>
+    )
+  }
 
   return (
-    <div style={styles.panel}>
-      <div style={styles.header}>
-        <span style={styles.title}>🛰 Nearby Satellites</span>
-        <span style={styles.sub}>{telescopeId}</span>
-      </div>
-
-      {loading && <p style={styles.muted}>Loading…</p>}
-
-      {!loading && satellites.length === 0 && (
-        <p style={styles.muted}>No satellites with cached TLEs.</p>
-      )}
-
-      <ul style={styles.list}>
-        {satellites.map((sat, i) => {
-          const isSelected = sat.norad_id === selectedSatId
-          return (
-            <li
-              key={sat.norad_id}
-              style={{ ...styles.item, ...(isSelected ? styles.itemSelected : {}) }}
+    <ul className="space-y-1">
+      {satellites.map((sat, i) => {
+        const selected = sat.norad_id === selectedSatId
+        return (
+          <li key={sat.norad_id}>
+            <button
+              type="button"
               onClick={() => onSelectSat(sat.norad_id)}
+              className={cn(
+                'flex w-full items-start gap-2 rounded-sm border px-2 py-1.5 text-left transition-colors',
+                selected
+                  ? 'border-primary/60 bg-primary/10'
+                  : 'border-transparent hover:border-border/60 hover:bg-muted/40',
+              )}
             >
-              <div style={styles.rank}>#{i + 1}</div>
-              <div style={styles.info}>
-                <div style={styles.name}>{sat.name}</div>
-                <div style={styles.meta}>
-                  {sat.category ?? sat.operator ?? '—'}
-                  {' · '}
-                  <span style={styles.dist}>{sat.distance_km.toLocaleString()} km away</span>
-                  {' · '}
-                  {sat.alt_km.toFixed(0)} km alt
-                </div>
-              </div>
-            </li>
-          )
-        })}
-      </ul>
-    </div>
+              <span className="mt-0.5 w-5 shrink-0 font-mono text-[10px] text-muted-foreground">#{i + 1}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-xs font-medium text-foreground">{sat.name}</span>
+                <span className="mt-0.5 block font-mono text-[10px] text-muted-foreground">
+                  {sat.distance_km.toLocaleString()} km away · {sat.alt_km.toFixed(0)} km alt
+                </span>
+              </span>
+            </button>
+          </li>
+        )
+      })}
+    </ul>
   )
-}
-
-const styles: Record<string, React.CSSProperties> = {
-  panel: {
-    position: 'relative',
-    width: '100%',
-    maxHeight: 220,
-    overflowY: 'auto',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginBottom: 10,
-  },
-  title:  { fontSize: 13, fontWeight: 600 },
-  sub:    { fontSize: 11, color: '#8ba0b4' },
-  muted:  { fontSize: 12, color: '#8ba0b4', margin: '4px 0' },
-  list:   { listStyle: 'none', padding: 0, margin: 0 },
-  item: {
-    display: 'flex',
-    gap: 10,
-    alignItems: 'flex-start',
-    padding: '7px 0',
-    borderBottom: '1px solid #1a2a3a',
-    cursor: 'pointer',
-  },
-  itemSelected: {
-    borderLeft: '3px solid #f59e0b',
-    paddingLeft: 6,
-    marginLeft: -6,
-  },
-  rank: {
-    fontSize: 11,
-    color: '#8ba0b4',
-    minWidth: 22,
-    paddingTop: 2,
-    flexShrink: 0,
-  },
-  info:   { flex: 1, minWidth: 0 },
-  name:   { fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis' },
-  meta:   { fontSize: 11, color: '#8ba0b4', marginTop: 2 },
-  dist:   { color: '#3b82d4' },
 }
