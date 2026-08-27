@@ -86,17 +86,18 @@ export default function Globe({
   }, [flyToTelescope])
 
   return (
-    <Viewer
-      ref={viewerRef}
-      full
-      baseLayerPicker={false}
-      geocoder={false}
-      homeButton={false}
-      sceneModePicker={false}
-      navigationHelpButton={false}
-      timeline={false}
-      animation={false}
-    >
+    <div className="absolute inset-0 overflow-hidden">
+      <Viewer
+        ref={viewerRef}
+        full
+        baseLayerPicker={false}
+        geocoder={false}
+        homeButton={false}
+        sceneModePicker={false}
+        navigationHelpButton={false}
+        timeline={false}
+        animation={false}
+      >
       <SatelliteLayer
         positions={satPositions}
         selectedId={selectedSatId}
@@ -116,6 +117,7 @@ export default function Globe({
         telescope={telescopes.find(t => t.telescope_id === selectedTelescopeId) ?? null}
         sunDirection={sunDirection}
       />
-    </Viewer>
+      </Viewer>
+    </div>
   )
 }

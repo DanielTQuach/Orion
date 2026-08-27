@@ -137,11 +137,10 @@ export default function TimelineScrubber({
 
 const styles: Record<string, React.CSSProperties> = {
   panel: {
-    position: 'absolute',
-    bottom: 24,
-    left: '50%',
-    transform: 'translateX(-50%)',
-    width: 660,
+    position: 'relative',
+    width: '100%',
+    maxWidth: 660,
+    margin: '0 auto',
     background: 'rgba(15,20,30,0.92)',
     border: '1px solid #2a3a4a',
     borderRadius: 8,

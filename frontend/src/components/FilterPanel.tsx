@@ -69,9 +69,7 @@ export default function FilterPanel({ filters, onChange }: Props) {
 
 const styles: Record<string, React.CSSProperties> = {
   panel: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
+    position: 'relative',
     width: 210,
     background: 'rgba(15,20,30,0.88)',
     border: '1px solid #2a3a4a',

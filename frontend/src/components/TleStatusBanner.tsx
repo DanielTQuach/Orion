@@ -46,10 +46,8 @@ export default function TleStatusBanner() {
 
 const styles: Record<string, React.CSSProperties> = {
   banner: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
+    position: 'relative',
+    flexShrink: 0,
     background: '#78350f',
     borderBottom: '1px solid #92400e',
     color: '#fef3c7',
