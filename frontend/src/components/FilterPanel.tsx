@@ -22,8 +22,6 @@ export default function FilterPanel({ filters, onChange }: Props) {
 
   return (
     <div style={styles.panel}>
-      <h2 style={styles.title}>Filters</h2>
-
       {/* Category */}
       <label style={styles.label}>Category</label>
       <select
@@ -70,19 +68,16 @@ export default function FilterPanel({ filters, onChange }: Props) {
 const styles: Record<string, React.CSSProperties> = {
   panel: {
     position: 'relative',
-    width: 210,
-    background: 'rgba(15,20,30,0.88)',
-    border: '1px solid #2a3a4a',
-    borderRadius: 8,
-    padding: 14,
-    zIndex: 100,
+    width: '100%',
+    background: 'transparent',
+    border: 'none',
+    padding: 0,
     color: '#e0e8f0',
     fontFamily: 'system-ui, sans-serif',
     display: 'flex',
     flexDirection: 'column',
     gap: 8,
   },
-  title:    { margin: 0, fontSize: 14, fontWeight: 600 },
   label:    { fontSize: 12, color: '#8ba0b4', marginBottom: -4 },
   select: {
     width: '100%',

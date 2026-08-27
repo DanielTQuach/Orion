@@ -142,38 +142,43 @@ export default function App() {
       </div>
 
       <main className="grid min-h-0 flex-1 gap-2 p-2 lg:grid-cols-[280px_1fr_340px]">
-        <Panel title="Telescopes" meta={`${telescopes.length} active`} className="h-full">
-          <div className="space-y-2">
-            {telescopesLoading && (
-              <p className="font-mono text-[11px] text-muted-foreground">Loading telescopes…</p>
-            )}
-            {telescopes.map(t => {
-              const active = t.telescope_id === selectedTelescopeId
-              return (
-                <button
-                  key={t.telescope_id}
-                  type="button"
-                  onClick={() => handleTelescopeSelect(t)}
-                  className={cn(
-                    'w-full rounded-sm border p-2.5 text-left transition-colors',
-                    active
-                      ? 'border-primary/60 bg-primary/10'
-                      : 'border-border/60 bg-muted/40 hover:border-primary/40 hover:bg-muted',
-                  )}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs font-semibold text-foreground">{t.telescope_id}</span>
-                    <span className="h-1.5 w-1.5 rounded-full bg-hud-cyan" />
-                  </div>
-                  <div className="mt-1 text-[13px] font-medium text-foreground">{t.name}</div>
-                  <div className="font-mono text-[10px] text-muted-foreground">
-                    {t.lat.toFixed(2)}°, {t.lon.toFixed(2)}° · {Math.round(t.alt_m)} m
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        </Panel>
+        <div className="flex h-full min-h-0 flex-col gap-2">
+          <Panel title="Telescopes" meta={`${telescopes.length} active`} className="min-h-0 flex-1">
+            <div className="space-y-2">
+              {telescopesLoading && (
+                <p className="font-mono text-[11px] text-muted-foreground">Loading telescopes…</p>
+              )}
+              {telescopes.map(t => {
+                const active = t.telescope_id === selectedTelescopeId
+                return (
+                  <button
+                    key={t.telescope_id}
+                    type="button"
+                    onClick={() => handleTelescopeSelect(t)}
+                    className={cn(
+                      'w-full rounded-sm border p-2.5 text-left transition-colors',
+                      active
+                        ? 'border-primary/60 bg-primary/10'
+                        : 'border-border/60 bg-muted/40 hover:border-primary/40 hover:bg-muted',
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-xs font-semibold text-foreground">{t.telescope_id}</span>
+                      <span className="h-1.5 w-1.5 rounded-full bg-hud-cyan" />
+                    </div>
+                    <div className="mt-1 text-[13px] font-medium text-foreground">{t.name}</div>
+                    <div className="font-mono text-[10px] text-muted-foreground">
+                      {t.lat.toFixed(2)}°, {t.lon.toFixed(2)}° · {Math.round(t.alt_m)} m
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </Panel>
+          <Panel title="Filters" className="shrink-0">
+            <FilterPanel filters={filters} onChange={setFilters} />
+          </Panel>
+        </div>
 
         <Panel
           title="Orbital visualizer"
@@ -196,24 +201,8 @@ export default function App() {
             />
           </div>
 
-          <div className="pointer-events-none absolute inset-x-0 top-2 z-20 flex justify-end px-2">
-            <div className="pointer-events-auto">
-              <FilterPanel filters={filters} onChange={setFilters} />
-            </div>
-          </div>
-
-          <div className="pointer-events-none absolute right-2 top-14 z-20 max-h-[calc(100%-5rem)]">
-            <div className="pointer-events-auto">
-              <NearbyPanel
-                telescopeId={selectedTelescopeId}
-                selectedSatId={selectedSatId}
-                onSelectSat={setSelectedSatId}
-              />
-            </div>
-          </div>
-
           {selectedTelescopeId && (
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20">
+            <div className="pointer-events-none absolute inset-x-2 bottom-2 z-20">
               <div className="pointer-events-auto">
                 <TimelineScrubber
                   events={events}
@@ -227,6 +216,13 @@ export default function App() {
         </Panel>
 
         <div className="flex h-full min-h-0 flex-col gap-2">
+          <Panel title="Nearby satellites" className="shrink-0 max-h-56">
+            <NearbyPanel
+              telescopeId={selectedTelescopeId}
+              selectedSatId={selectedSatId}
+              onSelectSat={setSelectedSatId}
+            />
+          </Panel>
           <Panel
             title="Selected telemetry"
             meta={selectedTelescope?.telescope_id ?? mockTelemetry.id}

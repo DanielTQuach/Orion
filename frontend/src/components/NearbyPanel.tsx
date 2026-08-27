@@ -81,15 +81,8 @@ export default function NearbyPanel({ telescopeId, selectedSatId, onSelectSat }:
 const styles: Record<string, React.CSSProperties> = {
   panel: {
     position: 'relative',
-    width: 280,
-    background: 'rgba(15,20,30,0.88)',
-    border: '1px solid #2a3a4a',
-    borderRadius: 8,
-    padding: '12px 14px',
-    zIndex: 100,
-    color: '#e0e8f0',
-    fontFamily: 'system-ui, sans-serif',
-    maxHeight: '40vh',
+    width: '100%',
+    maxHeight: 220,
     overflowY: 'auto',
   },
   header: {

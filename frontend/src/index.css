@@ -132,7 +132,16 @@
   box-shadow: inset 0 0 0 1px oklch(1 0 0 / 3%);
 }
 
-/* Cesium attribution sits above dashboard chrome */
-.cesium-widget-credits {
-  font-size: 10px !important;
+/* Hide Cesium chrome so the HUD panel stays clean */
+.cesium-widget-credits,
+.cesium-viewer-bottom,
+.cesium-viewer-toolbar {
+  display: none !important;
+}
+
+.cesium-viewer,
+.cesium-viewer-cesiumWidgetContainer,
+.cesium-widget,
+.cesium-widget canvas {
+  background: #05080f !important;
 }
