@@ -16,10 +16,21 @@ interface SunDirection {
   z: number
 }
 
+/** Look-ahead windows for interference prediction. */
+const LOOKAHEAD_OPTIONS = [
+  { hours: 1, label: '1h', hint: 'Next orbits' },
+  { hours: 6, label: '6h', hint: 'Observing session' },
+  { hours: 12, label: '12h', hint: 'Full night' },
+  { hours: 24, label: '24h', hint: 'Next day' },
+] as const
+
+const DEFAULT_LOOKAHEAD_HOURS = 6
+
 export default function App() {
   const [selectedSatId, setSelectedSatId] = useState<number | null>(null)
   const [selectedTelescopeId, setSelectedTelescopeId] = useState<string | null>(null)
   const [flyToTelescope, setFlyToTelescope] = useState<Telescope | null>(null)
+  const [lookaheadHours, setLookaheadHours] = useState<number>(DEFAULT_LOOKAHEAD_HOURS)
   const [scanning, setScanning] = useState(false)
   const [sunDirection, setSunDirection] = useState<SunDirection | null>(null)
 
@@ -60,15 +71,48 @@ export default function App() {
     [telescopes, selectedTelescopeId],
   )
 
-  const runScan = async (telescopeId: string) => {
+  const upcomingEvents = useMemo(() => {
+    const now = Date.now()
+    const end = now + lookaheadHours * 3_600_000
+    return events
+      .filter(ev => {
+        const t = new Date(ev.event_time).getTime()
+        return t >= now - 15 * 60_000 && t <= end
+      })
+      .sort((a, b) => new Date(a.event_time).getTime() - new Date(b.event_time).getTime())
+  }, [events, lookaheadHours])
+
+  const runLookahead = async (telescopeId: string, hours: number = lookaheadHours) => {
     setScanning(true)
     try {
-      await fetch('/api/reflections/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ telescope_id: telescopeId, hours_ahead: 1.0 }),
-      })
-      await refetchReflections()
+      // Short windows: wait for scan. Longer windows: kick off background predict, then refresh.
+      if (hours <= 6) {
+        await fetch('/api/reflections/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            telescope_id: telescopeId,
+            hours_ahead: hours,
+            step_seconds: hours <= 1 ? 60 : 120,
+          }),
+        })
+        await refetchReflections()
+      } else {
+        await fetch('/api/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            telescope_id: telescopeId,
+            hours_ahead: hours,
+            step_seconds: 120,
+          }),
+        })
+        // Prediction runs in the background — poll a few times for results.
+        for (let i = 0; i < 4; i++) {
+          await new Promise(r => setTimeout(r, 1500))
+          await refetchReflections()
+        }
+      }
     } finally {
       setScanning(false)
     }
@@ -78,7 +122,7 @@ export default function App() {
     setSelectedTelescopeId(telescope.telescope_id)
     setSelectedSatId(null)
     setFlyToTelescope(telescope)
-    runScan(telescope.telescope_id)
+    runLookahead(telescope.telescope_id, lookaheadHours)
   }
 
   return (
@@ -180,36 +224,60 @@ export default function App() {
           </Panel>
 
           <Panel
-            title="Interference events"
-            meta={scanning ? 'scanning…' : `${events.length}`}
+            title="Look ahead"
+            meta={scanning ? 'scanning…' : `${upcomingEvents.length} in window`}
             className="min-h-0 flex-1"
           >
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <p className="text-[11px] text-muted-foreground">
-                Specular reflections that could glare into the selected telescope.
-              </p>
-              <button
-                type="button"
-                disabled={!selectedTelescopeId || scanning}
-                onClick={() => selectedTelescopeId && runScan(selectedTelescopeId)}
-                className={cn(
-                  'shrink-0 rounded-sm border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider',
-                  scanning || !selectedTelescopeId
-                    ? 'cursor-not-allowed border-border/50 text-muted-foreground'
-                    : 'border-primary/50 bg-primary/10 text-primary hover:bg-primary/20',
-                )}
-              >
-                {scanning ? 'Scanning…' : 'Scan now'}
-              </button>
+            <p className="mb-2 text-[11px] text-muted-foreground">
+              Predict when satellite glare may enter this telescope’s field of view over the next window.
+            </p>
+
+            <div className="mb-3 flex flex-wrap gap-1.5">
+              {LOOKAHEAD_OPTIONS.map(opt => {
+                const active = lookaheadHours === opt.hours
+                return (
+                  <button
+                    key={opt.hours}
+                    type="button"
+                    disabled={scanning}
+                    title={opt.hint}
+                    onClick={() => setLookaheadHours(opt.hours)}
+                    className={cn(
+                      'rounded-sm border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors',
+                      active
+                        ? 'border-primary/60 bg-primary/15 text-primary'
+                        : 'border-border/60 text-muted-foreground hover:border-primary/40 hover:text-foreground',
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                )
+              })}
             </div>
 
-            {events.length === 0 ? (
+            <button
+              type="button"
+              disabled={!selectedTelescopeId || scanning}
+              onClick={() => selectedTelescopeId && runLookahead(selectedTelescopeId)}
+              className={cn(
+                'mb-3 w-full rounded-sm border px-2.5 py-1.5 font-mono text-[11px] uppercase tracking-wider',
+                scanning || !selectedTelescopeId
+                  ? 'cursor-not-allowed border-border/50 text-muted-foreground'
+                  : 'border-primary/50 bg-primary/10 text-primary hover:bg-primary/20',
+              )}
+            >
+              {scanning
+                ? `Scanning next ${lookaheadHours}h…`
+                : `Predict next ${lookaheadHours}h`}
+            </button>
+
+            {upcomingEvents.length === 0 ? (
               <p className="font-mono text-[11px] text-muted-foreground">
-                No reflection events yet. Select a telescope and run a scan.
+                No interference events in the next {lookaheadHours}h. Choose a window and run a prediction.
               </p>
             ) : (
               <ul className="space-y-1.5">
-                {events.slice(0, 12).map(ev => (
+                {upcomingEvents.slice(0, 12).map(ev => (
                   <li
                     key={ev.id}
                     className={cn(
@@ -225,7 +293,7 @@ export default function App() {
                       {satNameById.get(ev.norad_id) ?? `NORAD ${ev.norad_id}`}
                     </div>
                     <div className="mt-0.5 font-mono text-[10px] text-hud-amber">
-                      Reflection
+                      Glare risk
                       {ev.angle_deg != null ? ` · ${ev.angle_deg.toFixed(2)}°` : ''}
                     </div>
                   </li>
