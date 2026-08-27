@@ -119,7 +119,7 @@ export default function App() {
             <div className="h-2.5 w-2.5 rounded-full bg-primary" />
           </div>
           <h1 className="font-display text-sm font-semibold uppercase tracking-[0.14em] text-foreground">
-            Orbital Command
+            Orion
           </h1>
           <span className="hidden font-mono text-[10px] text-muted-foreground sm:inline">
             TELESCOPE / SATELLITE INTERFERENCE MONITOR
