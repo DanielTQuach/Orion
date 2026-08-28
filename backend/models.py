@@ -44,3 +44,21 @@ class ReflectionEvent(Base):
 
     satellite: Mapped["Satellite"] = relationship(back_populates="reflection_events")
     telescope: Mapped["Telescope"] = relationship(back_populates="reflection_events")
+
+
+class FovCrossingEvent(Base):
+    __tablename__ = "fov_crossing_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    norad_id: Mapped[int] = mapped_column(Integer, ForeignKey("satellites.norad_id"), nullable=False)
+    telescope_id: Mapped[str] = mapped_column(String(20), ForeignKey("telescopes.telescope_id"), nullable=False)
+    event_time: Mapped[str] = mapped_column(String(30), nullable=False)
+    duration_s: Mapped[int | None] = mapped_column(Integer)
+    separation_deg: Mapped[float | None] = mapped_column(Float)
+    boresight_az_deg: Mapped[float | None] = mapped_column(Float)
+    boresight_el_deg: Mapped[float | None] = mapped_column(Float)
+    fov_deg: Mapped[float | None] = mapped_column(Float)
+    created_at: Mapped[str] = mapped_column(String(30), server_default=func.now())
+
+    satellite: Mapped["Satellite"] = relationship()
+    telescope: Mapped["Telescope"] = relationship()

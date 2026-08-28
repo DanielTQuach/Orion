@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import { useSatellites } from '@/hooks/useSatellites'
 import { useTelescopes } from '@/hooks/useTelescopes'
 import { useSatPositions } from '@/hooks/useSatPositions'
-import { useReflections } from '@/hooks/useReflections'
+import { useFovCrossings } from '@/hooks/useFovCrossings'
 import type { Telescope } from '@/hooks/useTelescopes'
 
 interface SunDirection {
@@ -25,6 +25,7 @@ const LOOKAHEAD_OPTIONS = [
 ] as const
 
 const DEFAULT_LOOKAHEAD_HOURS = 6
+const DEMO_TELESCOPE_ID = 'DEMO'
 
 export default function App() {
   const [selectedSatId, setSelectedSatId] = useState<number | null>(null)
@@ -38,7 +39,7 @@ export default function App() {
   const { telescopes, loading: telescopesLoading } = useTelescopes()
   const noradIds = useMemo(() => satellites.map(s => s.norad_id), [satellites])
   const { positions: satPositions } = useSatPositions(noradIds)
-  const { events, reflectingIds, refetch: refetchReflections } = useReflections(selectedTelescopeId)
+  const { events, crossingIds, refetch: refetchCrossings } = useFovCrossings(selectedTelescopeId)
 
   const satNameById = useMemo(() => {
     const map = new Map<number, string>()
@@ -49,7 +50,8 @@ export default function App() {
 
   useEffect(() => {
     if (!selectedTelescopeId && telescopes.length > 0) {
-      const first = telescopes[0]!
+      const demo = telescopes.find(t => t.telescope_id === DEMO_TELESCOPE_ID)
+      const first = demo ?? telescopes[0]!
       setSelectedTelescopeId(first.telescope_id)
       setFlyToTelescope(first)
     }
@@ -85,34 +87,17 @@ export default function App() {
   const runLookahead = async (telescopeId: string, hours: number = lookaheadHours) => {
     setScanning(true)
     try {
-      // Short windows: wait for scan. Longer windows: kick off background predict, then refresh.
-      if (hours <= 6) {
-        await fetch('/api/reflections/scan', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            telescope_id: telescopeId,
-            hours_ahead: hours,
-            step_seconds: hours <= 1 ? 60 : 120,
-          }),
-        })
-        await refetchReflections()
-      } else {
-        await fetch('/api/predict', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            telescope_id: telescopeId,
-            hours_ahead: hours,
-            step_seconds: 120,
-          }),
-        })
-        // Prediction runs in the background — poll a few times for results.
-        for (let i = 0; i < 4; i++) {
-          await new Promise(r => setTimeout(r, 1500))
-          await refetchReflections()
-        }
-      }
+      await fetch('/api/fov/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          telescope_id: telescopeId,
+          hours_ahead: hours,
+          step_seconds: hours <= 1 ? 30 : 60,
+          fov_deg: telescopeId === DEMO_TELESCOPE_ID ? 3.0 : 2.0,
+        }),
+      })
+      await refetchCrossings()
     } finally {
       setScanning(false)
     }
@@ -159,6 +144,7 @@ export default function App() {
             )}
             {telescopes.map(t => {
               const active = t.telescope_id === selectedTelescopeId
+              const isDemo = t.telescope_id === DEMO_TELESCOPE_ID
               return (
                 <button
                   key={t.telescope_id}
@@ -169,13 +155,26 @@ export default function App() {
                     active
                       ? 'border-primary/60 bg-primary/10'
                       : 'border-border/60 bg-muted/40 hover:border-primary/40 hover:bg-muted',
+                    isDemo && !active && 'border-hud-amber/40',
                   )}
                 >
-                  <div className="font-mono text-xs font-semibold text-foreground">{t.telescope_id}</div>
+                  <div className="flex items-center gap-2">
+                    <div className="font-mono text-xs font-semibold text-foreground">{t.telescope_id}</div>
+                    {isDemo && (
+                      <span className="rounded-sm border border-hud-amber/50 bg-hud-amber/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-hud-amber">
+                        Demo
+                      </span>
+                    )}
+                  </div>
                   <div className="mt-1 text-[13px] font-medium text-foreground">{t.name}</div>
                   <div className="font-mono text-[10px] text-muted-foreground">
                     {t.lat.toFixed(2)}°, {t.lon.toFixed(2)}°
                   </div>
+                  {isDemo && (
+                    <div className="mt-1 text-[10px] text-hud-amber/90">
+                      Guaranteed FOV predictions — boresight locked to ISS at scan start
+                    </div>
+                  )}
                 </button>
               )
             })}
@@ -202,7 +201,7 @@ export default function App() {
                 if (t) handleTelescopeSelect(t)
               }}
               flyToTelescope={flyToTelescope}
-              reflectingIds={reflectingIds}
+              reflectingIds={crossingIds}
               sunDirection={sunDirection}
             />
           </div>
@@ -229,7 +228,7 @@ export default function App() {
             className="min-h-0 flex-1"
           >
             <p className="mb-2 text-[11px] text-muted-foreground">
-              Predict when satellite glare may enter this telescope’s field of view over the next window.
+              Predict when satellite trails may cross this telescope’s field of view during a long exposure.
             </p>
 
             <div className="mb-3 flex flex-wrap gap-1.5">
@@ -293,8 +292,8 @@ export default function App() {
                       {satNameById.get(ev.norad_id) ?? `NORAD ${ev.norad_id}`}
                     </div>
                     <div className="mt-0.5 font-mono text-[10px] text-hud-amber">
-                      Glare risk
-                      {ev.angle_deg != null ? ` · ${ev.angle_deg.toFixed(2)}°` : ''}
+                      Trail in FOV
+                      {ev.separation_deg != null ? ` · ${ev.separation_deg.toFixed(2)}° from boresight` : ''}
                     </div>
                   </li>
                 ))}

@@ -29,6 +29,7 @@ SATELLITES = [
 
 # Subset of IAU observatory codes (code, name, lat, lon, alt_m)
 TELESCOPES = [
+    ("DEMO", "Orion Demo Telescope", 38.9214, -77.0672, 92.0),
     ("000", "Greenwich", 51.4769, 0.0005, 65.8),
     ("010", "Uccle", 50.7978, 4.3581, 105.0),
     ("099", "Reedy Creek Observatory", -28.1167, 153.3667, 40.0),
