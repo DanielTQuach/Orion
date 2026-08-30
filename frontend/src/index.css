@@ -5,13 +5,13 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -45,54 +45,68 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-void: var(--void);
+  --color-panel: var(--panel);
+  --color-brass: var(--brass);
+  --color-cyan: var(--cyan);
+  --color-signal: var(--signal);
+  --color-critical: var(--critical);
+  --color-violet: var(--violet);
+  /* Legacy HUD aliases used by globe layers */
   --color-hud-cyan: var(--hud-cyan);
   --color-hud-amber: var(--hud-amber);
   --color-hud-red: var(--hud-red);
   --color-hud-grid: var(--hud-grid);
-  --color-panel: var(--panel);
-  --font-display: "Chakra Petch", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
 :root {
-  --hud-cyan: oklch(0.82 0.14 199);
-  --hud-amber: oklch(0.82 0.16 78);
-  --hud-red: oklch(0.66 0.22 22);
-  --hud-grid: oklch(0.82 0.14 199 / 12%);
-  --panel: oklch(0.19 0.03 245);
-  --radius: 0.25rem;
-  --background: oklch(0.14 0.025 250);
-  --foreground: oklch(0.984 0.003 247.858);
-  --card: oklch(0.18 0.028 248);
-  --card-foreground: oklch(0.984 0.003 247.858);
-  --popover: oklch(0.208 0.042 265.755);
-  --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.82 0.14 199);
-  --primary-foreground: oklch(0.16 0.03 250);
-  --secondary: oklch(0.279 0.041 260.031);
-  --secondary-foreground: oklch(0.984 0.003 247.858);
-  --muted: oklch(0.24 0.03 248);
-  --muted-foreground: oklch(0.72 0.03 220);
-  --accent: oklch(0.82 0.16 78);
-  --accent-foreground: oklch(0.16 0.03 250);
-  --destructive: oklch(0.66 0.22 22);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.82 0.14 199 / 18%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.82 0.14 199 / 50%);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.208 0.042 265.755);
-  --sidebar-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.279 0.041 260.031);
-  --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.551 0.027 264.364);
+  --void: #05070d;
+  --panel: #0b1018;
+  --brass: #e2c48a;
+  --cyan: #8ed7f2;
+  --signal: #7ee0c3;
+  --critical: #ff8b7a;
+  --violet: #c4b5fd;
+  --hud-cyan: #8ed7f2;
+  --hud-amber: #e2c48a;
+  --hud-red: #ff8b7a;
+  --hud-grid: rgb(142 215 242 / 10%);
+  --radius: 0.625rem;
+  --background: #05070d;
+  --foreground: #e8edf7;
+  --card: #0e1624;
+  --card-foreground: #e8edf7;
+  --popover: #0e1624;
+  --popover-foreground: #e8edf7;
+  --primary: #e2c48a;
+  --primary-foreground: #14110a;
+  --secondary: #152033;
+  --secondary-foreground: #e8edf7;
+  --muted: #152033;
+  --muted-foreground: #8b93a7;
+  --accent: #152033;
+  --accent-foreground: #e8edf7;
+  --destructive: #ff8b7a;
+  --destructive-foreground: #e8edf7;
+  --border: rgb(180 200 230 / 12%);
+  --input: rgb(180 200 230 / 16%);
+  --ring: #8ed7f2;
+  --chart-1: #8ed7f2;
+  --chart-2: #e2c48a;
+  --chart-3: #7ee0c3;
+  --chart-4: #c4b5fd;
+  --chart-5: #ff8b7a;
+  --sidebar: #0b1018;
+  --sidebar-foreground: #e8edf7;
+  --sidebar-primary: #e2c48a;
+  --sidebar-primary-foreground: #14110a;
+  --sidebar-accent: #152033;
+  --sidebar-accent-foreground: #e8edf7;
+  --sidebar-border: rgb(180 200 230 / 12%);
+  --sidebar-ring: #8ed7f2;
 }
 
 @layer base {
@@ -109,14 +123,18 @@
   }
 
   body {
-    font-family: var(--font-display);
-    background-color: var(--color-background);
-    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    background-color: var(--void);
+    color: var(--foreground);
     background-image:
-      radial-gradient(circle at 20% 15%, oklch(0.82 0.14 199 / 8%), transparent 45%),
-      radial-gradient(circle at 85% 80%, oklch(0.82 0.16 78 / 6%), transparent 40%);
+      radial-gradient(1200px 600px at 70% -10%, rgb(80 120 180 / 14%), transparent 55%),
+      radial-gradient(800px 400px at 10% 110%, rgb(90 60 40 / 18%), transparent 50%);
     background-attachment: fixed;
   }
+}
+
+::selection {
+  background: rgb(226 196 138 / 28%);
 }
 
 @utility hud-grid {
@@ -127,9 +145,27 @@
 }
 
 @utility panel {
-  background-color: color-mix(in oklab, var(--card) 85%, transparent);
-  border: 1px solid var(--border);
-  box-shadow: inset 0 0 0 1px oklch(1 0 0 / 3%);
+  background-color: color-mix(in oklab, var(--panel) 88%, transparent);
+  border: 1px solid rgb(180 200 230 / 12%);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 3%);
+}
+
+@keyframes predict-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 rgb(142 215 242 / 45%),
+      0 0 28px rgb(142 215 242 / 28%);
+  }
+  50% {
+    box-shadow:
+      0 0 0 10px rgb(142 215 242 / 0%),
+      0 0 36px rgb(142 215 242 / 40%);
+  }
+}
+
+.predict-glow {
+  animation: predict-glow 2.1s ease-in-out infinite;
 }
 
 /* Hide Cesium chrome so the HUD panel stays clean */

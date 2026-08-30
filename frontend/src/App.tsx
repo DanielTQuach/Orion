@@ -3,6 +3,7 @@ import { OrbitalVisualizer } from '@/components/OrbitalVisualizer'
 import { Panel } from '@/components/dashboard-parts'
 import TleStatusBanner from '@/components/TleStatusBanner'
 import NearbyPanel from '@/components/NearbyPanel'
+import { WorkflowSteps, type WorkflowPhase } from '@/components/workflow-steps'
 import { cn } from '@/lib/utils'
 import { useSatellites } from '@/hooks/useSatellites'
 import { useTelescopes } from '@/hooks/useTelescopes'
@@ -16,7 +17,6 @@ interface SunDirection {
   z: number
 }
 
-/** Look-ahead windows for interference prediction. */
 const LOOKAHEAD_OPTIONS = [
   { hours: 1, label: '1h', hint: 'Next orbits' },
   { hours: 6, label: '6h', hint: 'Observing session' },
@@ -34,6 +34,7 @@ export default function App() {
   const [lookaheadHours, setLookaheadHours] = useState<number>(DEFAULT_LOOKAHEAD_HOURS)
   const [scanning, setScanning] = useState(false)
   const [sunDirection, setSunDirection] = useState<SunDirection | null>(null)
+  const [utcClock, setUtcClock] = useState(() => new Date())
 
   const { satellites } = useSatellites({})
   const { telescopes, loading: telescopesLoading } = useTelescopes()
@@ -68,6 +69,11 @@ export default function App() {
     return () => clearInterval(t)
   }, [])
 
+  useEffect(() => {
+    const id = window.setInterval(() => setUtcClock(new Date()), 1000)
+    return () => window.clearInterval(id)
+  }, [])
+
   const selectedTelescope = useMemo(
     () => telescopes.find(t => t.telescope_id === selectedTelescopeId) ?? null,
     [telescopes, selectedTelescopeId],
@@ -83,6 +89,12 @@ export default function App() {
       })
       .sort((a, b) => new Date(a.event_time).getTime() - new Date(b.event_time).getTime())
   }, [events, lookaheadHours])
+
+  const phase: WorkflowPhase = !selectedTelescope
+    ? 1
+    : upcomingEvents.length > 0
+      ? 3
+      : 2
 
   const runLookahead = async (telescopeId: string, hours: number = lookaheadHours) => {
     setScanning(true)
@@ -110,86 +122,98 @@ export default function App() {
     runLookahead(telescope.telescope_id, lookaheadHours)
   }
 
+  const utcLabel = utcClock.toISOString().slice(11, 19)
+
   return (
-    <div className="flex h-screen w-full flex-col overflow-hidden bg-background text-foreground">
+    <div className="flex h-screen w-full flex-col overflow-hidden bg-void text-foreground">
       <TleStatusBanner />
 
-      <header className="shrink-0 border-b border-border bg-card px-4 py-3">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full border border-primary/60 bg-primary/10">
-              <div className="h-2.5 w-2.5 rounded-full bg-primary" />
-            </div>
-            <div>
-              <h1 className="font-display text-sm font-semibold uppercase tracking-[0.14em] text-foreground">
-                Orion
-              </h1>
-              <p className="mt-0.5 max-w-xl text-xs text-muted-foreground">
-                See when satellites pass near a telescope and may interfere with observations.
-              </p>
-            </div>
+      <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-white/8 bg-panel/70 px-4 backdrop-blur-md md:px-6">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-brass/40">
+            <span className="text-sm font-semibold leading-none text-brass">O</span>
           </div>
-          <div className="hidden font-mono text-[10px] text-muted-foreground sm:block">
-            {satellites.length} satellites · {telescopes.length} telescopes
+          <div className="min-w-0">
+            <p className="text-[15px] font-medium leading-none tracking-tight">Orion</p>
+            <p className="hidden font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase sm:block">
+              {selectedTelescope?.name ?? 'Pick a telescope'}
+              <span className="text-white/20"> · </span>
+              {utcLabel} UTC
+            </p>
           </div>
         </div>
+        <div className="md:hidden">
+          <WorkflowSteps current={phase} compact />
+        </div>
+        <div className="hidden md:block">
+          <WorkflowSteps current={phase} />
+        </div>
+        <p className="hidden font-mono text-[10px] tracking-wide text-muted-foreground uppercase xl:block">
+          {satellites.length} sats · {telescopes.length} scopes
+        </p>
       </header>
 
-      <main className="grid min-h-0 flex-1 gap-2 p-2 lg:grid-cols-[260px_1fr_300px]">
-        {/* Step 1: pick a telescope */}
-        <Panel title="1. Choose a telescope" meta={`${telescopes.length}`} className="h-full">
-          <div className="space-y-2">
-            {telescopesLoading && (
-              <p className="font-mono text-[11px] text-muted-foreground">Loading…</p>
-            )}
-            {telescopes.map(t => {
-              const active = t.telescope_id === selectedTelescopeId
-              const isDemo = t.telescope_id === DEMO_TELESCOPE_ID
-              return (
-                <button
-                  key={t.telescope_id}
-                  type="button"
-                  onClick={() => handleTelescopeSelect(t)}
-                  className={cn(
-                    'w-full rounded-sm border p-2.5 text-left transition-colors',
-                    active
-                      ? 'border-primary/60 bg-primary/10'
-                      : 'border-border/60 bg-muted/40 hover:border-primary/40 hover:bg-muted',
-                    isDemo && !active && 'border-hud-amber/40',
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="font-mono text-xs font-semibold text-foreground">{t.telescope_id}</div>
-                    {isDemo && (
-                      <span className="rounded-sm border border-hud-amber/50 bg-hud-amber/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-hud-amber">
-                        Demo
-                      </span>
+      <main className="grid min-h-0 flex-1 gap-0 lg:grid-cols-[280px_1fr_320px]">
+        <aside className="min-h-0 overflow-hidden border-b border-white/8 lg:border-r lg:border-b-0">
+          <Panel
+            step="Step 1"
+            title="Telescopes"
+            meta={`${telescopes.length}`}
+            className="h-full rounded-none border-0"
+            bodyClassName="p-2"
+          >
+            <p className="mb-2 px-1 text-xs text-muted-foreground">
+              Pick one to check for satellite interference.
+            </p>
+            <div className="space-y-0.5">
+              {telescopesLoading && (
+                <p className="px-2 font-mono text-[11px] text-muted-foreground">Loading…</p>
+              )}
+              {telescopes.map(t => {
+                const active = t.telescope_id === selectedTelescopeId
+                const isDemo = t.telescope_id === DEMO_TELESCOPE_ID
+                return (
+                  <button
+                    key={t.telescope_id}
+                    type="button"
+                    onClick={() => handleTelescopeSelect(t)}
+                    className={cn(
+                      'w-full rounded-lg px-3 py-2 text-left transition-colors',
+                      active
+                        ? 'bg-brass/12 ring-1 ring-brass/35'
+                        : 'hover:bg-white/4',
+                      isDemo && !active && 'ring-1 ring-cyan/20',
                     )}
-                  </div>
-                  <div className="mt-1 text-[13px] font-medium text-foreground">{t.name}</div>
-                  <div className="font-mono text-[10px] text-muted-foreground">
-                    {t.lat.toFixed(2)}°, {t.lon.toFixed(2)}°
-                  </div>
-                  {isDemo && (
-                    <div className="mt-1 text-[10px] text-hud-amber/90">
-                      Guaranteed FOV predictions — boresight locked to ISS at scan start
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium tracking-tight">{t.name}</span>
+                      {isDemo ? (
+                        <span className="rounded-sm border border-cyan/30 bg-cyan/10 px-1.5 py-0.5 font-mono text-[9px] text-cyan uppercase">
+                          Demo
+                        </span>
+                      ) : (
+                        <span className="font-mono text-[9px] text-muted-foreground uppercase">
+                          {t.telescope_id}
+                        </span>
+                      )}
                     </div>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        </Panel>
+                    <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
+                      {t.lat.toFixed(2)}°, {t.lon.toFixed(2)}°
+                    </p>
+                    {isDemo && (
+                      <p className="mt-1 text-[10px] text-cyan/80">
+                        Guaranteed FOV predictions
+                      </p>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </Panel>
+        </aside>
 
-        {/* Step 2: see it on the globe */}
-        <Panel
-          title="2. Watch the sky"
-          meta={selectedTelescope?.name ?? 'select a telescope'}
-          className="relative h-full"
-          bodyClassName="relative min-h-0 flex-1 overflow-hidden p-0"
-        >
-          <div className="hud-grid pointer-events-none absolute inset-0 opacity-30" />
-          <div className="relative z-10 h-full min-h-0 w-full">
+        <section className="relative min-h-[42vh] overflow-hidden lg:min-h-0">
+          <div className="absolute inset-0">
             <OrbitalVisualizer
               satPositions={satPositions}
               telescopes={telescopes}
@@ -205,16 +229,29 @@ export default function App() {
               sunDirection={sunDirection}
             />
           </div>
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-background/90 to-transparent px-3 pb-3 pt-8">
+          <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-end p-3 lg:p-4">
+            <div className="rounded-full border border-white/10 bg-panel/75 px-3 py-1.5 backdrop-blur-md">
+              <p className="font-mono text-[10px] text-muted-foreground">
+                {selectedTelescope
+                  ? `${upcomingEvents.length} crossings in ${lookaheadHours}h window`
+                  : 'Select a telescope to begin'}
+              </p>
+            </div>
+          </div>
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-void/90 to-transparent px-3 pb-3 pt-8">
             <p className="font-mono text-[10px] text-muted-foreground">
-              Cyan = telescopes · Amber = reflecting satellites · Cones show telescope look direction
+              Cyan = telescopes · Amber = FOV crossings · Cones show look direction
             </p>
           </div>
-        </Panel>
+        </section>
 
-        {/* Step 3: nearby sats + interference events */}
-        <div className="flex h-full min-h-0 flex-col gap-2">
-          <Panel title="3. Nearby satellites" className="min-h-0 flex-1">
+        <aside className="flex min-h-0 flex-col gap-0 overflow-hidden border-t border-white/8 lg:border-t-0 lg:border-l">
+          <Panel
+            step="Step 2"
+            title="Nearby satellites"
+            className="min-h-0 flex-1 rounded-none border-0 border-b border-white/8"
+            bodyClassName="p-2"
+          >
             <NearbyPanel
               telescopeId={selectedTelescopeId}
               selectedSatId={selectedSatId}
@@ -223,11 +260,13 @@ export default function App() {
           </Panel>
 
           <Panel
+            step="Step 3"
             title="Look ahead"
             meta={scanning ? 'scanning…' : `${upcomingEvents.length} in window`}
-            className="min-h-0 flex-1"
+            className="min-h-0 flex-1 rounded-none border-0"
+            bodyClassName="p-3"
           >
-            <p className="mb-2 text-[11px] text-muted-foreground">
+            <p className="mb-3 text-xs text-muted-foreground">
               Predict when satellite trails may cross this telescope’s field of view during a long exposure.
             </p>
 
@@ -242,10 +281,10 @@ export default function App() {
                     title={opt.hint}
                     onClick={() => setLookaheadHours(opt.hours)}
                     className={cn(
-                      'rounded-sm border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors',
+                      'rounded-md border px-2.5 py-1 font-mono text-[10px] tracking-wide uppercase transition-colors',
                       active
-                        ? 'border-primary/60 bg-primary/15 text-primary'
-                        : 'border-border/60 text-muted-foreground hover:border-primary/40 hover:text-foreground',
+                        ? 'border-cyan/45 bg-cyan/15 text-cyan'
+                        : 'border-white/12 text-muted-foreground hover:border-white/20 hover:text-foreground',
                     )}
                   >
                     {opt.label}
@@ -259,10 +298,10 @@ export default function App() {
               disabled={!selectedTelescopeId || scanning}
               onClick={() => selectedTelescopeId && runLookahead(selectedTelescopeId)}
               className={cn(
-                'mb-3 w-full rounded-sm border px-2.5 py-1.5 font-mono text-[11px] uppercase tracking-wider',
+                'mb-3 w-full rounded-lg px-3 py-2.5 font-mono text-[11px] font-semibold tracking-wide uppercase transition-colors',
                 scanning || !selectedTelescopeId
-                  ? 'cursor-not-allowed border-border/50 text-muted-foreground'
-                  : 'border-primary/50 bg-primary/10 text-primary hover:bg-primary/20',
+                  ? 'cursor-not-allowed border border-white/10 bg-white/5 text-muted-foreground'
+                  : 'predict-glow border border-cyan/30 bg-cyan text-void hover:bg-cyan/90',
               )}
             >
               {scanning
@@ -271,36 +310,42 @@ export default function App() {
             </button>
 
             {upcomingEvents.length === 0 ? (
-              <p className="font-mono text-[11px] text-muted-foreground">
-                No interference events in the next {lookaheadHours}h. Choose a window and run a prediction.
+              <p className="text-xs text-muted-foreground">
+                No interference events in the next {lookaheadHours}h. Run a prediction to scan.
               </p>
             ) : (
-              <ul className="space-y-1.5">
+              <ul className="flex flex-col gap-0.5">
                 {upcomingEvents.slice(0, 12).map(ev => (
-                  <li
-                    key={ev.id}
-                    className={cn(
-                      'cursor-pointer rounded-sm border border-border/50 bg-muted/30 px-2 py-1.5 transition-colors hover:border-primary/40',
-                      selectedSatId === ev.norad_id && 'border-hud-amber/60 bg-hud-amber/10',
-                    )}
-                    onClick={() => setSelectedSatId(ev.norad_id)}
-                  >
-                    <div className="font-mono text-[10px] text-muted-foreground">
-                      {new Date(ev.event_time).toUTCString().replace(' GMT', ' UTC')}
-                    </div>
-                    <div className="mt-0.5 text-xs text-foreground">
-                      {satNameById.get(ev.norad_id) ?? `NORAD ${ev.norad_id}`}
-                    </div>
-                    <div className="mt-0.5 font-mono text-[10px] text-hud-amber">
-                      Trail in FOV
-                      {ev.separation_deg != null ? ` · ${ev.separation_deg.toFixed(2)}° from boresight` : ''}
-                    </div>
+                  <li key={ev.id}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSatId(ev.norad_id)}
+                      className={cn(
+                        'w-full rounded-lg px-2.5 py-2 text-left transition-colors',
+                        selectedSatId === ev.norad_id
+                          ? 'bg-cyan/12 ring-1 ring-cyan/35'
+                          : 'hover:bg-white/4',
+                      )}
+                    >
+                      <div className="font-mono text-[10px] text-muted-foreground">
+                        {new Date(ev.event_time).toUTCString().replace(' GMT', ' UTC')}
+                      </div>
+                      <div className="mt-0.5 text-sm font-medium tracking-tight text-foreground">
+                        {satNameById.get(ev.norad_id) ?? `NORAD ${ev.norad_id}`}
+                      </div>
+                      <div className="mt-0.5 font-mono text-[10px] text-cyan">
+                        Trail in FOV
+                        {ev.separation_deg != null
+                          ? ` · ${ev.separation_deg.toFixed(2)}° from boresight`
+                          : ''}
+                      </div>
+                    </button>
                   </li>
                 ))}
               </ul>
             )}
           </Panel>
-        </div>
+        </aside>
       </main>
     </div>
   )
