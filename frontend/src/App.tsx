@@ -10,6 +10,7 @@ import { useTelescopes } from '@/hooks/useTelescopes'
 import { useSatPositions } from '@/hooks/useSatPositions'
 import { useFovCrossings } from '@/hooks/useFovCrossings'
 import type { Telescope } from '@/hooks/useTelescopes'
+import orionLogo from '@/assets/orion_logo.png'
 
 interface SunDirection {
   x: number
@@ -130,9 +131,11 @@ export default function App() {
 
       <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-white/8 bg-panel/70 px-4 backdrop-blur-md md:px-6">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-brass/40">
-            <span className="text-sm font-semibold leading-none text-brass">O</span>
-          </div>
+          <img
+            src={orionLogo}
+            alt="Orion"
+            className="size-9 shrink-0 rounded-md object-cover"
+          />
           <div className="min-w-0">
             <p className="text-[15px] font-medium leading-none tracking-tight">Orion</p>
             <p className="hidden font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase sm:block">
