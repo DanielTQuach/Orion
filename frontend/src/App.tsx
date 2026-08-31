@@ -158,10 +158,10 @@ export default function App() {
           </div>
         </div>
         <div className="md:hidden">
-          <WorkflowSteps current={phase} compact />
+          <WorkflowSteps current={phase} compact onSelect={id => setRagOpen(id === 4)} />
         </div>
         <div className="hidden md:block">
-          <WorkflowSteps current={phase} />
+          <WorkflowSteps current={phase} onSelect={id => setRagOpen(id === 4)} />
         </div>
         <p className="hidden font-mono text-[10px] tracking-wide text-muted-foreground uppercase xl:block">
           {satellites.length} sats · {telescopes.length} scopes
@@ -274,12 +274,12 @@ export default function App() {
             />
           </Panel>
 
-          {!ragOpen ? (
+          {!ragOpen && (
           <Panel
             step="Step 3"
             title="Look ahead"
             meta={scanning ? 'scanning…' : `${upcomingEvents.length} in window`}
-            className="min-h-0 flex-1 rounded-none border-0"
+            className="min-h-0 flex-1 rounded-none border-0 border-b border-white/8"
             bodyClassName="p-3"
           >
             <p className="mb-3 text-xs text-muted-foreground">
@@ -360,21 +360,13 @@ export default function App() {
                 ))}
               </ul>
             )}
-
-            {/* Step 4 entry point */}
-            <button
-              type="button"
-              onClick={() => setRagOpen(true)}
-              className="mt-3 w-full rounded-lg border border-violet/30 bg-violet/10 px-3 py-2 font-mono text-[10px] font-semibold tracking-wide text-violet uppercase transition-colors hover:bg-violet/20"
-            >
-              → Step 4: RAG Schedule
-            </button>
           </Panel>
-          ) : (
+          )}
+
           <Panel
             step="Step 4"
             title="RAG Schedule"
-            meta={
+            meta={ragOpen ? (
               <button
                 type="button"
                 onClick={() => setRagOpen(false)}
@@ -382,16 +374,33 @@ export default function App() {
               >
                 ← back
               </button>
-            }
-            className="min-h-0 flex-1 rounded-none border-0"
+            ) : undefined}
+            className={cn(
+              'rounded-none border-0',
+              ragOpen ? 'min-h-0 flex-1' : 'shrink-0',
+            )}
             bodyClassName="p-3"
           >
-            <RagSchedulePanel
-              telescopeId={selectedTelescopeId}
-              isDemo={selectedTelescopeId === DEMO_TELESCOPE_ID}
-            />
+            {ragOpen ? (
+              <RagSchedulePanel
+                telescopeId={selectedTelescopeId}
+                isDemo={selectedTelescopeId === DEMO_TELESCOPE_ID}
+              />
+            ) : (
+              <div className="flex flex-col gap-2.5">
+                <p className="text-xs text-muted-foreground">
+                  After predicting trails, schedule a keep-out-safe pointing with the 5-stage RAG pipeline.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setRagOpen(true)}
+                  className="w-full rounded-lg border border-violet/40 bg-violet/20 px-3 py-2.5 font-mono text-[11px] font-semibold tracking-wide text-violet uppercase transition-colors hover:bg-violet/30"
+                >
+                  Open RAG scheduler
+                </button>
+              </div>
+            )}
           </Panel>
-          )}
         </aside>
       </main>
     </div>

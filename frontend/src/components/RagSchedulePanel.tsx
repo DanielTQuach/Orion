@@ -283,9 +283,9 @@ export default function RagSchedulePanel({
 }) {
   const { schedule, result, loading, error, reset } = useRagSchedule()
 
-  const [ra, setRa]               = useState(isDemo ? '180' : '')
-  const [dec, setDec]           = useState(isDemo ? '39' : '')
-  const [goal, setGoal]         = useState(isDemo ? DEMO_GOAL : '')
+  const [ra, setRa]               = useState('')
+  const [dec, setDec]             = useState('')
+  const [goal, setGoal]           = useState(isDemo ? DEMO_GOAL : '')
   const [priority, setPriority]   = useState('3')
   const [mission, setMission]     = useState<string>('HST')
   const [sunLimit, setSunLimit]   = useState('50')
@@ -300,8 +300,8 @@ export default function RagSchedulePanel({
     e.preventDefault()
     if (!canSubmit) return
     schedule({
-      ra_deg:        parseFloat(ra) || 180,
-      dec_deg:       parseFloat(dec) || 39,
+      ra_deg:        isDemo ? 0 : parseFloat(ra),
+      dec_deg:       isDemo ? 0 : parseFloat(dec),
       science_goal:  (goal.trim() || DEMO_GOAL),
       priority:      parseInt(priority, 10),
       mission,
@@ -315,13 +315,28 @@ export default function RagSchedulePanel({
     <div className="flex flex-col gap-4">
       <p className="text-xs text-muted-foreground">
         {isDemo
-          ? 'Demo telescope: Orion uses a keep-out-safe zenith field and canned MAST context so the pipeline always completes, even without watsonx or live catalogs.'
+          ? 'Pointing RA/Dec is overridden for demo: the pipeline locks onto a keep-out-safe zenith field so the walkthrough always completes.'
           : 'Enter a target pointing and science goal. Granite will evaluate safe slots against live keep-out geometry and satellite contamination windows.'}
       </p>
 
       {/* Form */}
       {!result && (
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          {isDemo ? (
+            <div className="rounded-lg border border-violet/30 bg-violet/8 px-3 py-2.5">
+              <p className="font-mono text-[9px] tracking-[0.18em] text-violet/80 uppercase">
+                Overridden for demo
+              </p>
+              <p className="mt-1 text-[11px] leading-relaxed text-foreground/90">
+                RA / Dec are not editable. At run time the backend replaces them with a
+                keep-out-safe zenith pointing for this site (Dec ≈ site latitude, RA = local
+                sidereal time, then rotated until Sun/Moon limits pass).
+              </p>
+              <p className="mt-1.5 font-mono text-[10px] text-muted-foreground">
+                Chosen coordinates appear in the result after the pipeline finishes.
+              </p>
+            </div>
+          ) : (
           <div className="grid grid-cols-2 gap-2">
             <Field label="RA (deg)">
               <Input
@@ -346,6 +361,7 @@ export default function RagSchedulePanel({
               />
             </Field>
           </div>
+          )}
 
           <Field label="Science goal">
             <textarea
