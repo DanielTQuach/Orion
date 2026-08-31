@@ -39,7 +39,11 @@ export default function NearbyPanel({ telescopeId, selectedSatId, onSelectSat }:
   }, [telescopeId])
 
   if (!telescopeId) {
-    return <p className="font-mono text-[11px] text-muted-foreground">Select a telescope to see nearby satellites.</p>
+    return (
+      <p className="text-xs text-muted-foreground">
+        Select a telescope to see nearby satellites.
+      </p>
+    )
   }
 
   if (loading) {
@@ -48,14 +52,14 @@ export default function NearbyPanel({ telescopeId, selectedSatId, onSelectSat }:
 
   if (satellites.length === 0) {
     return (
-      <p className="font-mono text-[11px] text-muted-foreground">
+      <p className="text-xs text-muted-foreground">
         No satellites with cached TLEs near this site.
       </p>
     )
   }
 
   return (
-    <ul className="space-y-1">
+    <ul className="flex flex-col gap-0.5">
       {satellites.map((sat, i) => {
         const selected = sat.norad_id === selectedSatId
         return (
@@ -64,19 +68,25 @@ export default function NearbyPanel({ telescopeId, selectedSatId, onSelectSat }:
               type="button"
               onClick={() => onSelectSat(sat.norad_id)}
               className={cn(
-                'flex w-full items-start gap-2 rounded-sm border px-2 py-1.5 text-left transition-colors',
+                'w-full rounded-lg px-2.5 py-2 text-left transition-colors',
                 selected
-                  ? 'border-primary/60 bg-primary/10'
-                  : 'border-transparent hover:border-border/60 hover:bg-muted/40',
+                  ? 'bg-brass/12 ring-1 ring-brass/35'
+                  : 'hover:bg-white/4',
               )}
             >
-              <span className="mt-0.5 w-5 shrink-0 font-mono text-[10px] text-muted-foreground">#{i + 1}</span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-xs font-medium text-foreground">{sat.name}</span>
-                <span className="mt-0.5 block font-mono text-[10px] text-muted-foreground">
-                  {sat.distance_km.toLocaleString()} km away · {sat.alt_km.toFixed(0)} km alt
+              <div className="flex items-start gap-2">
+                <span className="mt-0.5 w-5 shrink-0 font-mono text-[10px] text-muted-foreground">
+                  #{i + 1}
                 </span>
-              </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium tracking-tight text-foreground">
+                    {sat.name}
+                  </span>
+                  <span className="mt-0.5 block font-mono text-[10px] text-muted-foreground">
+                    {sat.distance_km.toLocaleString()} km · {sat.alt_km.toFixed(0)} km alt
+                  </span>
+                </span>
+              </div>
             </button>
           </li>
         )

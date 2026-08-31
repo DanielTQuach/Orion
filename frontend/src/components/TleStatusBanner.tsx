@@ -1,8 +1,8 @@
 /**
  * TLE status banner — shown at the top when the cache is empty.
- * Lets the user seed static fallback TLEs with one click.
  */
 import { useEffect, useState } from 'react'
+import { cn } from '@/lib/utils'
 
 export default function TleStatusBanner() {
   const [count, setCount] = useState<number | null>(null)
@@ -10,7 +10,7 @@ export default function TleStatusBanner() {
 
   const checkStatus = () =>
     fetch('/api/tle/status')
-      .then(r => r.ok ? r.json() : null)
+      .then(r => (r.ok ? r.json() : null))
       .then(d => d && setCount(d.cached_tle_count))
       .catch(() => {})
 
@@ -27,48 +27,25 @@ export default function TleStatusBanner() {
     setSeeding(false)
   }
 
-  // Don't render if cache is populated or status unknown
   if (count === null || count > 0) return null
 
   return (
-    <div style={styles.banner}>
-      <span style={styles.icon}>⚠</span>
-      <span>
+    <div className="relative z-50 flex shrink-0 items-center gap-3 border-b border-critical/30 bg-critical/10 px-4 py-2 text-sm text-foreground">
+      <span className="text-critical">⚠</span>
+      <span className="text-[13px] text-muted-foreground">
         No satellite TLEs in cache — CelesTrak may be unreachable.
-        Satellite positions will not display.
       </span>
-      <button style={styles.btn} onClick={seedFallback} disabled={seeding}>
+      <button
+        type="button"
+        onClick={seedFallback}
+        disabled={seeding}
+        className={cn(
+          'ml-auto shrink-0 rounded-md border border-brass/35 bg-brass/15 px-3 py-1 font-mono text-[11px] tracking-wide text-brass uppercase transition-colors',
+          'hover:bg-brass/25 disabled:opacity-50',
+        )}
+      >
         {seeding ? 'Loading…' : 'Load demo TLEs'}
       </button>
     </div>
   )
-}
-
-const styles: Record<string, React.CSSProperties> = {
-  banner: {
-    position: 'relative',
-    flexShrink: 0,
-    background: '#78350f',
-    borderBottom: '1px solid #92400e',
-    color: '#fef3c7',
-    fontSize: 13,
-    padding: '8px 16px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-    zIndex: 200,
-    fontFamily: 'system-ui, sans-serif',
-  },
-  icon:  { fontSize: 16, flexShrink: 0 },
-  btn: {
-    marginLeft: 'auto',
-    padding: '4px 14px',
-    borderRadius: 4,
-    border: 'none',
-    background: '#d97706',
-    color: '#fff',
-    fontSize: 12,
-    cursor: 'pointer',
-    flexShrink: 0,
-  },
 }
