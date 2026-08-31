@@ -4,9 +4,10 @@ const STEPS = [
   { id: 1, label: 'Select' },
   { id: 2, label: 'Watch' },
   { id: 3, label: 'Predict' },
+  { id: 4, label: 'Schedule' },
 ] as const
 
-export type WorkflowPhase = 1 | 2 | 3
+export type WorkflowPhase = 1 | 2 | 3 | 4
 
 export function WorkflowSteps({
   current,
@@ -20,14 +21,16 @@ export function WorkflowSteps({
       {STEPS.map((step, i) => {
         const done = current > step.id
         const active = current === step.id
-        const isPredict = step.id === 3
+        const isPredict  = step.id === 3
+        const isSchedule = step.id === 4
         return (
           <li key={step.id} className="flex items-center">
             <div
               className={cn(
                 'flex items-center gap-1.5 rounded-full px-2 py-1 font-mono text-[10px] tracking-[0.14em] uppercase transition-colors',
+                active && isSchedule && 'bg-violet/15 text-violet ring-1 ring-violet/45',
                 active && isPredict && 'bg-cyan/15 text-cyan ring-1 ring-cyan/45',
-                active && !isPredict && 'bg-brass/12 text-brass ring-1 ring-brass/35',
+                active && !isPredict && !isSchedule && 'bg-brass/12 text-brass ring-1 ring-brass/35',
                 done && 'text-signal',
                 !active && !done && 'text-muted-foreground/45',
               )}
@@ -35,8 +38,9 @@ export function WorkflowSteps({
               <span
                 className={cn(
                   'flex size-4 items-center justify-center rounded-full text-[9px]',
+                  active && isSchedule && 'bg-violet text-void',
                   active && isPredict && 'bg-cyan text-void',
-                  active && !isPredict && 'bg-brass text-void',
+                  active && !isPredict && !isSchedule && 'bg-brass text-void',
                   done && 'bg-signal/20',
                   !active && !done && 'bg-white/8',
                 )}

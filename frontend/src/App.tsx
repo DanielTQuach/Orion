@@ -4,6 +4,7 @@ import { Panel } from '@/components/dashboard-parts'
 import TleStatusBanner from '@/components/TleStatusBanner'
 import NearbyPanel from '@/components/NearbyPanel'
 import { WorkflowSteps, type WorkflowPhase } from '@/components/workflow-steps'
+import RagSchedulePanel from '@/components/RagSchedulePanel'
 import { cn } from '@/lib/utils'
 import { useSatellites } from '@/hooks/useSatellites'
 import { useTelescopes } from '@/hooks/useTelescopes'
@@ -91,11 +92,15 @@ export default function App() {
       .sort((a, b) => new Date(a.event_time).getTime() - new Date(b.event_time).getTime())
   }, [events, lookaheadHours])
 
-  const phase: WorkflowPhase = !selectedTelescope
-    ? 1
-    : upcomingEvents.length > 0
-      ? 3
-      : 2
+  const [ragOpen, setRagOpen] = useState(false)
+
+  const phase: WorkflowPhase = ragOpen
+    ? 4
+    : !selectedTelescope
+      ? 1
+      : upcomingEvents.length > 0
+        ? 3
+        : 2
 
   const runLookahead = async (telescopeId: string, hours: number = lookaheadHours) => {
     setScanning(true)
@@ -262,6 +267,7 @@ export default function App() {
             />
           </Panel>
 
+          {!ragOpen ? (
           <Panel
             step="Step 3"
             title="Look ahead"
@@ -347,7 +353,35 @@ export default function App() {
                 ))}
               </ul>
             )}
+
+            {/* Step 4 entry point */}
+            <button
+              type="button"
+              onClick={() => setRagOpen(true)}
+              className="mt-3 w-full rounded-lg border border-violet/30 bg-violet/10 px-3 py-2 font-mono text-[10px] font-semibold tracking-wide text-violet uppercase transition-colors hover:bg-violet/20"
+            >
+              → Step 4: RAG Schedule
+            </button>
           </Panel>
+          ) : (
+          <Panel
+            step="Step 4"
+            title="RAG Schedule"
+            meta={
+              <button
+                type="button"
+                onClick={() => setRagOpen(false)}
+                className="font-mono text-[10px] text-muted-foreground hover:text-foreground"
+              >
+                ← back
+              </button>
+            }
+            className="min-h-0 flex-1 rounded-none border-0"
+            bodyClassName="p-3"
+          >
+            <RagSchedulePanel />
+          </Panel>
+          )}
         </aside>
       </main>
     </div>
