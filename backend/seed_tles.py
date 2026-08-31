@@ -51,16 +51,23 @@ STATIC_TLES = [
 ]
 
 
-def seed_tles():
-    """Inject static TLEs directly into the in-memory cache."""
+def apply_static_tles() -> int:
+    """Inject static TLEs into the in-memory cache. Returns count seeded."""
     from services.cache import tle_cache
     for sat in STATIC_TLES:
-        key = f"tle:{sat['norad_id']}"
-        tle_cache.set(key, {
+        tle_cache.set(f"tle:{sat['norad_id']}", {
             "name":      sat["name"],
             "tle_line1": sat["tle_line1"],
             "tle_line2": sat["tle_line2"],
         })
+    return len(STATIC_TLES)
+
+
+def seed_tles():
+    """Inject static TLEs directly into the in-memory cache."""
+    from services.cache import tle_cache
+    apply_static_tles()
+    for sat in STATIC_TLES:
         print(f"  + Cached TLE: {sat['name']} (NORAD {sat['norad_id']})")
     print(f"\nCache now holds {tle_cache.size()} TLE(s).")
 

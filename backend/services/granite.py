@@ -130,6 +130,33 @@ Moon position: RA {keepout['moon']['ra_deg']:.2f}°  Dec {keepout['moon']['dec_d
 """
 
 
+def _heuristic_eval(context: dict[str, Any]) -> dict[str, Any]:
+    """Pick the safest slot when Granite is unavailable (demo / offline)."""
+    slots = context.get("safe_slots") or []
+    chosen = slots[0] if slots else None
+    goal = context.get("request", {}).get("science_goal", "the science goal")
+    if not chosen:
+        return {
+            "chosen_slot":        None,
+            "justification":      "No safe pointing slots were available after keep-out filtering.",
+            "contamination_risk": "high",
+            "confidence":         0.0,
+            "raw_response":       "",
+        }
+    sun_sep = chosen.get("keepout", {}).get("sun_sep_deg", 0)
+    return {
+        "chosen_slot": chosen,
+        "justification": (
+            f"Selected the keep-out-safest slot (Sun sep {sun_sep:.1f}°) "
+            f"for “{goal}”. IBM Granite was not reachable, so Orion used the "
+            "deterministic ranking from the RAG context builder."
+        ),
+        "contamination_risk": "low",
+        "confidence":         0.88,
+        "raw_response":       "",
+    }
+
+
 async def evaluate_with_granite(context: dict[str, Any]) -> dict[str, Any]:
     """
     Send the RAG context to IBM Granite and parse its slot recommendation.
@@ -153,11 +180,15 @@ async def evaluate_with_granite(context: dict[str, Any]) -> dict[str, Any]:
 
     prompt = _build_prompt(context)
 
+    if not WATSONX_API_KEY:
+        logger.warning("WATSONX_API_KEY unset — using heuristic slot selection")
+        return _heuristic_eval(context)
+
     try:
         token = await _get_iam_token()
     except Exception as exc:
         logger.error("IAM token fetch failed: %s", exc)
-        raise
+        return _heuristic_eval(context)
 
     payload = {
         "model_id": GRANITE_MODEL_ID,
@@ -188,7 +219,7 @@ async def evaluate_with_granite(context: dict[str, Any]) -> dict[str, Any]:
             result = resp.json()
     except Exception as exc:
         logger.error("Granite API call failed: %s", exc)
-        raise
+        return _heuristic_eval(context)
 
     raw_text = (
         result.get("results", [{}])[0].get("generated_text", "").strip()

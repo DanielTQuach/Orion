@@ -271,12 +271,21 @@ function ResultCard({ result }: { result: RagResult }) {
 
 const MISSIONS = ['HST', 'JWST', 'TESS', 'KEPLER'] as const
 
-export default function RagSchedulePanel() {
+const DEMO_GOAL =
+  'Demo: map diffraction spikes on a keep-out-safe zenith field while accounting for ISS trail contamination.'
+
+export default function RagSchedulePanel({
+  telescopeId,
+  isDemo = false,
+}: {
+  telescopeId?: string | null
+  isDemo?: boolean
+}) {
   const { schedule, result, loading, error, reset } = useRagSchedule()
 
-  const [ra, setRa]               = useState('')
-  const [dec, setDec]             = useState('')
-  const [goal, setGoal]           = useState('')
+  const [ra, setRa]               = useState(isDemo ? '180' : '')
+  const [dec, setDec]           = useState(isDemo ? '39' : '')
+  const [goal, setGoal]         = useState(isDemo ? DEMO_GOAL : '')
   const [priority, setPriority]   = useState('3')
   const [mission, setMission]     = useState<string>('HST')
   const [sunLimit, setSunLimit]   = useState('50')
@@ -284,29 +293,30 @@ export default function RagSchedulePanel() {
 
   const canSubmit =
     !loading &&
-    ra.trim() !== '' &&
-    dec.trim() !== '' &&
-    goal.trim().length >= 5
+    (isDemo ||
+      (ra.trim() !== '' && dec.trim() !== '' && goal.trim().length >= 5))
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!canSubmit) return
     schedule({
-      ra_deg:        parseFloat(ra),
-      dec_deg:       parseFloat(dec),
-      science_goal:  goal.trim(),
+      ra_deg:        parseFloat(ra) || 180,
+      dec_deg:       parseFloat(dec) || 39,
+      science_goal:  (goal.trim() || DEMO_GOAL),
       priority:      parseInt(priority, 10),
       mission,
       sun_limit_deg:  parseFloat(sunLimit),
       moon_limit_deg: parseFloat(moonLimit),
+      telescope_id:  telescopeId ?? undefined,
     })
   }
 
   return (
     <div className="flex flex-col gap-4">
       <p className="text-xs text-muted-foreground">
-        Enter a target pointing and science goal. Granite will evaluate safe
-        slots against live keep-out geometry and satellite contamination windows.
+        {isDemo
+          ? 'Demo telescope: Orion uses a keep-out-safe zenith field and canned MAST context so the pipeline always completes, even without watsonx or live catalogs.'
+          : 'Enter a target pointing and science goal. Granite will evaluate safe slots against live keep-out geometry and satellite contamination windows.'}
       </p>
 
       {/* Form */}
@@ -410,7 +420,7 @@ export default function RagSchedulePanel() {
                 : 'cursor-not-allowed border border-white/10 bg-white/5 text-muted-foreground',
             )}
           >
-            {loading ? 'Running pipeline…' : 'Run RAG Pipeline'}
+            {loading ? 'Running pipeline…' : isDemo ? 'Run demo RAG pipeline' : 'Run RAG Pipeline'}
           </button>
 
           {error && (

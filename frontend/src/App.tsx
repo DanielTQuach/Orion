@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { OrbitalVisualizer } from '@/components/OrbitalVisualizer'
 import { Panel } from '@/components/dashboard-parts'
 import TleStatusBanner from '@/components/TleStatusBanner'
@@ -93,6 +93,7 @@ export default function App() {
   }, [events, lookaheadHours])
 
   const [ragOpen, setRagOpen] = useState(false)
+  const demoScanStarted = useRef(false)
 
   const phase: WorkflowPhase = ragOpen
     ? 4
@@ -127,6 +128,12 @@ export default function App() {
     setFlyToTelescope(telescope)
     runLookahead(telescope.telescope_id, lookaheadHours)
   }
+
+  useEffect(() => {
+    if (selectedTelescopeId !== DEMO_TELESCOPE_ID || demoScanStarted.current) return
+    demoScanStarted.current = true
+    runLookahead(DEMO_TELESCOPE_ID, lookaheadHours)
+  }, [selectedTelescopeId, lookaheadHours])
 
   const utcLabel = utcClock.toISOString().slice(11, 19)
 
@@ -379,7 +386,10 @@ export default function App() {
             className="min-h-0 flex-1 rounded-none border-0"
             bodyClassName="p-3"
           >
-            <RagSchedulePanel />
+            <RagSchedulePanel
+              telescopeId={selectedTelescopeId}
+              isDemo={selectedTelescopeId === DEMO_TELESCOPE_ID}
+            />
           </Panel>
           )}
         </aside>

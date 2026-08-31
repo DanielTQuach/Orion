@@ -5,9 +5,9 @@ from sqlalchemy import select
 from database import get_db
 from models import Telescope, Satellite
 from services.geometry import geodetic_to_ecef
-from services.celestrak import get_tle
 from services.propagation import propagate
 from services.cache import tle_cache
+from services.demo import ensure_fallback_tles
 import math
 
 router = APIRouter(tags=["telescopes"])
@@ -25,7 +25,8 @@ async def list_telescopes(
             Telescope.telescope_id.ilike(pattern) | Telescope.name.ilike(pattern)
         )
     result = await db.execute(stmt)
-    rows = result.scalars().all()
+    rows = list(result.scalars().all())
+    rows.sort(key=lambda t: (0 if t.telescope_id == "DEMO" else 1, t.name))
     return [
         {
             "telescope_id": t.telescope_id,
@@ -99,6 +100,9 @@ async def get_nearby_satellites(
         raise HTTPException(status_code=404, detail="Telescope not found")
 
     tel_ecef = geodetic_to_ecef(tel.lat, tel.lon, tel.alt_m)
+
+    if tle_cache.size() == 0:
+        ensure_fallback_tles()
 
     # Get all satellites that have a cached TLE
     result = await db.execute(select(Satellite))

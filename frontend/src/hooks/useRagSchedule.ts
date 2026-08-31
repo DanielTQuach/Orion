@@ -14,6 +14,7 @@ export interface RagRequest {
   mission: string
   sun_limit_deg?: number
   moon_limit_deg?: number
+  telescope_id?: string
 }
 
 export interface KeeputGeometry {

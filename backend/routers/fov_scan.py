@@ -1,7 +1,7 @@
 """
 FOV crossing scan router.
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from datetime import datetime, timezone, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +10,7 @@ from database import get_db
 from models import Satellite, FovCrossingEvent
 from services.fov_scan import scan_fov_window, DEMO_TELESCOPE_ID, DEMO_CONFIG
 from services.cache import tle_cache
+from services.demo import ensure_fallback_tles, inject_demo_fov_crossings
 
 router = APIRouter(tags=["fov"])
 
@@ -41,10 +42,10 @@ async def trigger_fov_scan(req: FovScanRequest, db: AsyncSession = Depends(get_d
         norad_ids = [nid for nid in all_ids if tle_cache.get(f"tle:{nid}") is not None]
 
     if not norad_ids:
-        raise HTTPException(
-            status_code=422,
-            detail="No satellites with cached TLEs. Call POST /api/tle/seed first.",
-        )
+        ensure_fallback_tles()
+        result = await db.execute(select(Satellite.norad_id))
+        all_ids = [row[0] for row in result.all()]
+        norad_ids = [nid for nid in all_ids if tle_cache.get(f"tle:{nid}") is not None]
 
     telescope_id = req.telescope_id.upper()
     start = datetime.now(timezone.utc)
@@ -65,6 +66,12 @@ async def trigger_fov_scan(req: FovScanRequest, db: AsyncSession = Depends(get_d
 
     demo_note = None
     if telescope_id == DEMO_TELESCOPE_ID:
+        below_horizon = bool(events) and all(
+            (e.get("boresight_el_deg") or 0) < 5 for e in events
+        )
+        if not events or below_horizon:
+            injected = await inject_demo_fov_crossings(db, start, end)
+            events = events + injected
         demo_note = (
             f"Demo mode: {DEMO_CONFIG['fov_deg']}° FOV, boresight locked to "
             f"NORAD {DEMO_CONFIG['track_norad_id']} at scan start."

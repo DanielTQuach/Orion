@@ -13,7 +13,7 @@ Returns either an approved maneuver command or a detailed rejection response.
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from services.mast                import fetch_mast_targets, fetch_guide_stars
@@ -21,6 +21,14 @@ from services.keepout             import compute_keepout_vectors
 from services.rag_context         import build_rag_context
 from services.granite             import evaluate_with_granite
 from services.telemetry_validation import validate_maneuver, ManeuverViolation
+from services.fov_scan import DEMO_TELESCOPE_ID
+from services.demo import (
+    DEMO_LAT,
+    DEMO_SCIENCE_GOAL,
+    demo_safe_pointing,
+    demo_mast_observations,
+    demo_guide_stars,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/rag", tags=["rag_pipeline"])
@@ -54,6 +62,10 @@ class ScheduleRequest(BaseModel):
     observatory_lat_deg: float = Field(default=28.76)
     # Scheduled execution time (ISO-8601 UTC); defaults to now
     scheduled_at: datetime | None = Field(default=None)
+    telescope_id: str | None = Field(
+        default=None,
+        description="When DEMO, run a guaranteed-safe walkthrough pointing.",
+    )
 
 
 class PipelineResponse(BaseModel):
@@ -78,13 +90,27 @@ async def schedule_observation(req: ScheduleRequest) -> PipelineResponse:
     Returns an approved maneuver or a rejection with full diagnostic detail.
     """
     scheduled_at = req.scheduled_at or datetime.now(timezone.utc)
+    is_demo = (req.telescope_id or "").upper() == DEMO_TELESCOPE_ID
+
+    if is_demo:
+        req.ra_deg, req.dec_deg = demo_safe_pointing(scheduled_at, DEMO_LAT)
+        req.science_goal = req.science_goal or DEMO_SCIENCE_GOAL
+        req.observatory_lat_deg = DEMO_LAT
+        logger.info(
+            "DEMO RAG pointing locked to RA=%.4f Dec=%.4f",
+            req.ra_deg, req.dec_deg,
+        )
 
     # ── Stage 1: MAST + Guide Star Catalog ───────────────────────────────────
     logger.info(
         "RAG stage 1 — MAST query RA=%.4f Dec=%.4f mission=%s",
         req.ra_deg, req.dec_deg, req.mission,
     )
-    mast_obs, guide_stars = await _gather_mast_data(req)
+    if is_demo:
+        mast_obs = demo_mast_observations(req.ra_deg, req.dec_deg)
+        guide_stars = demo_guide_stars(req.ra_deg, req.dec_deg)
+    else:
+        mast_obs, guide_stars = await _gather_mast_data(req)
 
     # ── Stage 2: Keep-out vectors (pre-computed for response payload) ─────────
     logger.info("RAG stage 2 — computing keep-out vectors")
@@ -92,7 +118,10 @@ async def schedule_observation(req: ScheduleRequest) -> PipelineResponse:
 
     # Fetch reflection events from cache/DB for contamination context.
     # We use an in-process import to avoid circular deps at module load.
-    reflection_events = await _get_reflection_events(req)
+    if is_demo:
+        reflection_events = []
+    else:
+        reflection_events = await _get_reflection_events(req)
 
     # ── Stage 3: RAG context builder ─────────────────────────────────────────
     logger.info("RAG stage 3 — building context document")
@@ -123,13 +152,15 @@ async def schedule_observation(req: ScheduleRequest) -> PipelineResponse:
 
     # ── Stage 4: IBM Granite evaluation ──────────────────────────────────────
     logger.info("RAG stage 4 — Granite LLM evaluation")
-    try:
-        granite = await evaluate_with_granite(context)
-    except Exception as exc:
-        logger.error("Granite call failed: %s", exc)
-        raise HTTPException(
-            status_code=502,
-            detail=f"Granite LLM call failed: {exc}",
+    granite = await evaluate_with_granite(context)
+    if not granite.get("chosen_slot"):
+        return PipelineResponse(
+            approved       = False,
+            stage_reached  = "granite",
+            justification  = granite.get("justification"),
+            violations     = ["Granite did not select a pointing slot."],
+            keepout_geometry  = keepout_vectors,
+            candidate_stats   = context["candidate_count"],
         )
 
     chosen = granite["chosen_slot"]

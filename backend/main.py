@@ -1,4 +1,5 @@
 import logging
+import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -7,6 +8,7 @@ from routers import satellites, telescopes, reflections, propagation, reflection
 from services.scheduler import start_scheduler, stop_scheduler
 from services.celestrak import refresh_all
 from services.horizons import refresh_all_horizons_targets
+from services.demo import ensure_demo_catalog, ensure_fallback_tles
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -18,12 +20,20 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    # Initial TLE + Horizons fetch on startup
-    logger.info("Running initial TLE refresh on startup...")
     async with AsyncSessionLocal() as db:
-        counts = await refresh_all(db)
-        logger.info("Startup TLE refresh: %s", counts)
-    await refresh_all_horizons_targets()
+        await ensure_demo_catalog(db)
+        seeded = ensure_fallback_tles()
+        if seeded:
+            logger.info("Fallback TLEs loaded so DEMO nearby/FOV scans work offline")
+
+    async def _refresh_live_catalogs():
+        logger.info("Running TLE refresh in background...")
+        async with AsyncSessionLocal() as db:
+            counts = await refresh_all(db)
+            logger.info("Startup TLE refresh: %s", counts)
+        await refresh_all_horizons_targets()
+
+    asyncio.create_task(_refresh_live_catalogs())
 
     # Start background scheduler
     start_scheduler()
