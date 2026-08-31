@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from database import engine, Base, AsyncSessionLocal
-from routers import satellites, telescopes, reflections, propagation, reflection_scan, prediction, fov_scan
+from routers import satellites, telescopes, reflections, propagation, reflection_scan, prediction, fov_scan, rag_pipeline
 from services.scheduler import start_scheduler, stop_scheduler
 from services.celestrak import refresh_all
 from services.horizons import refresh_all_horizons_targets
@@ -50,6 +50,7 @@ app.include_router(propagation.router, prefix="/api")
 app.include_router(reflection_scan.router, prefix="/api")
 app.include_router(prediction.router, prefix="/api")
 app.include_router(fov_scan.router, prefix="/api")
+app.include_router(rag_pipeline.router, prefix="/api")
 
 
 @app.get("/health")
